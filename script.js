@@ -5,6 +5,8 @@ const formMessage = document.querySelector("#form-message");
 const resultContainer = document.querySelector("#course-result");
 const STORAGE_KEY = "bacochu-shared-courses";
 const LIKES_STORAGE_KEY = "bacochu-course-likes";
+const COMMENTS_STORAGE_KEY = "bacochu-course-comments-v1";
+const COMMENT_AUTHOR_STORAGE_KEY = "bacochu-comment-author-id";
 const sharedCourseList = document.querySelector("#shared-course-list");
 const sharedCourseDetail = document.querySelector("#shared-course-detail");
 const courseForm = document.querySelector("#course-form");
@@ -97,6 +99,58 @@ function removeCourseLike(courseId) {
   const likes = getCourseLikes();
   delete likes[String(courseId)];
   localStorage.setItem(LIKES_STORAGE_KEY, JSON.stringify(likes));
+}
+
+// 댓글은 Firebase와 공유하지 않고 이 브라우저의 별도 localStorage 영역에만 저장합니다.
+function getCommentStore() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(COMMENTS_STORAGE_KEY));
+    if (saved?.version === 1 && saved.byCourse && typeof saved.byCourse === "object" && !Array.isArray(saved.byCourse)) return saved;
+  } catch (error) {
+    console.warn("저장된 댓글을 불러오지 못했습니다.", error);
+  }
+  return { version: 1, byCourse: {} };
+}
+
+function saveCommentStore(store) {
+  try {
+    localStorage.setItem(COMMENTS_STORAGE_KEY, JSON.stringify(store));
+    return true;
+  } catch (error) {
+    console.warn("댓글을 저장하지 못했습니다.", error);
+    return false;
+  }
+}
+
+function getCourseComments(store, courseId) {
+  const comments = store.byCourse[String(courseId)];
+  return Array.isArray(comments) ? comments.filter((comment) => comment && typeof comment === "object") : [];
+}
+
+function createLocalId(prefix) {
+  if (crypto.randomUUID) return `${prefix}-${crypto.randomUUID()}`;
+  const bytes = crypto.getRandomValues(new Uint32Array(4));
+  return `${prefix}-${Array.from(bytes, (value) => value.toString(16)).join("")}`;
+}
+
+function getCommentAuthorId() {
+  try {
+    const saved = localStorage.getItem(COMMENT_AUTHOR_STORAGE_KEY);
+    if (saved) return saved;
+    const authorId = createLocalId("browser");
+    localStorage.setItem(COMMENT_AUTHOR_STORAGE_KEY, authorId);
+    return authorId;
+  } catch (error) {
+    // 로그인 대신 쓰는 임의 식별값일 뿐 실제 사용자 인증이나 보안 기능이 아닙니다.
+    console.warn("댓글 작성자 식별값을 저장하지 못했습니다.", error);
+    return "browser-storage-unavailable";
+  }
+}
+
+function removeCourseComments(courseId) {
+  const store = getCommentStore();
+  delete store.byCourse[String(courseId)];
+  saveCommentStore(store);
 }
 
 function likeButtonMarkup(courseId) {
@@ -208,11 +262,93 @@ function openCourseDetail(id) {
     <div class="detail-tags"><span class="tag">🌊 ${escapeHtml(course.beach)}</span><span class="tag">👥 ${escapeHtml(course.companion)}</span><span class="tag">✨ ${escapeHtml(course.mood)}</span></div>
     <section class="detail-section"><h2>📍 방문 장소 3곳</h2><ol class="detail-places">${course.places.map((place) => `<li>${escapeHtml(place)}</li>`).join("")}</ol></section>
     <section class="detail-section"><h2>💡 코스 소개와 추천 이유</h2><p>${escapeHtml(course.description)}</p></section>
+    <section class="comments" aria-labelledby="comments-title">
+      <div class="comments__heading"><h2 id="comments-title">댓글</h2><strong id="comment-count"></strong></div>
+      <p class="comments__local-guide">댓글은 현재 이 브라우저에만 저장되며 다른 이용자와 공유되지 않습니다.</p>
+      <form id="comment-form" class="comment-form" novalidate>
+        <label for="comment-nickname">별명</label>
+        <div class="comment-field"><input id="comment-nickname" name="nickname" type="text" maxlength="20" required autocomplete="nickname" aria-describedby="nickname-count" /><span id="nickname-count" class="character-count">0 / 20</span></div>
+        <label for="comment-content">댓글 내용</label>
+        <div class="comment-field"><textarea id="comment-content" name="content" rows="4" maxlength="300" required aria-describedby="content-count comment-shortcut"></textarea><span id="content-count" class="character-count">0 / 300</span></div>
+        <small id="comment-shortcut" class="comment-shortcut">Ctrl 또는 ⌘ + Enter로도 등록할 수 있어요.</small>
+        <p id="comment-message" class="comment-message" role="status" aria-live="polite"></p>
+        <button class="comment-submit" type="submit" aria-label="댓글 등록하기">댓글 등록</button>
+      </form>
+      <div id="comment-list" class="comment-list" aria-live="polite"></div>
+    </section>
     ${canDeleteCourse ? '<div class="course-management"><button class="delete-course-button" type="button" data-delete-course>코스 삭제</button><p class="delete-message" role="alert" aria-live="assertive"></p></div>' : ""}`;
+  renderComments(course.id);
   showScreen("course-detail-screen");
 }
 
+function renderComments(courseId, message = "") {
+  const list = sharedCourseDetail.querySelector("#comment-list");
+  const count = sharedCourseDetail.querySelector("#comment-count");
+  if (!list || !count) return;
+  const validComments = getCourseComments(getCommentStore(), courseId);
+  const authorId = getCommentAuthorId();
+  count.textContent = `댓글 ${validComments.length}개`;
+  list.replaceChildren();
+
+  if (!validComments.length) {
+    const empty = document.createElement("p");
+    empty.className = "comment-empty";
+    empty.textContent = "아직 작성된 댓글이 없습니다. 첫 댓글을 남겨보세요!";
+    list.append(empty);
+  } else {
+    [...validComments].sort((a, b) => Number(a.createdAt) - Number(b.createdAt)).forEach((comment) => {
+      const card = document.createElement("article");
+      card.className = "comment-card";
+      const header = document.createElement("div");
+      header.className = "comment-card__header";
+      const meta = document.createElement("div");
+      const nickname = document.createElement("strong");
+      nickname.textContent = String(comment.nickname || "");
+      const time = document.createElement("time");
+      const date = new Date(comment.createdAt);
+      time.dateTime = Number.isNaN(date.getTime()) ? "" : date.toISOString();
+      time.textContent = Number.isNaN(date.getTime()) ? "작성 시각 정보 없음" : new Intl.DateTimeFormat("ko-KR", { dateStyle: "medium", timeStyle: "short" }).format(date);
+      meta.append(nickname, time);
+      header.append(meta);
+      // 이 브라우저 식별값 비교는 삭제 버튼 구분용일 뿐 실제 인증이나 보안 기능이 아닙니다.
+      if (comment.authorId === authorId) {
+        const deleteButton = document.createElement("button");
+        deleteButton.type = "button";
+        deleteButton.className = "comment-delete";
+        deleteButton.dataset.deleteComment = String(comment.id);
+        deleteButton.setAttribute("aria-label", `${nickname.textContent}님의 댓글 삭제`);
+        deleteButton.textContent = "삭제";
+        header.append(deleteButton);
+      }
+      const content = document.createElement("p");
+      // 사용자 입력은 innerHTML이 아닌 textContent로 출력해 HTML이나 스크립트가 실행되지 않게 합니다.
+      content.textContent = String(comment.content || "");
+      card.append(header, content);
+      list.append(card);
+    });
+  }
+  const status = sharedCourseDetail.querySelector("#comment-message");
+  if (status) status.textContent = message;
+}
+
 sharedCourseDetail.addEventListener("click", async (event) => {
+  const commentDeleteButton = event.target.closest("[data-delete-comment]");
+  if (commentDeleteButton) {
+    if (!window.confirm("이 댓글을 삭제하시겠습니까?")) return;
+    const store = getCommentStore();
+    const courseId = String(selectedSharedCourseId);
+    const comments = getCourseComments(store, courseId);
+    const authorId = getCommentAuthorId();
+    const commentId = commentDeleteButton.dataset.deleteComment;
+    const target = comments.find((comment) => String(comment.id) === commentId);
+    if (!target || target.authorId !== authorId) {
+      renderComments(courseId, "이 브라우저에서 작성한 댓글만 삭제할 수 있습니다.");
+      return;
+    }
+    store.byCourse[courseId] = comments.filter((comment) => String(comment.id) !== commentId);
+    renderComments(courseId, saveCommentStore(store) ? "댓글이 삭제되었습니다." : "댓글을 삭제하지 못했습니다. 브라우저 저장 공간을 확인해 주세요.");
+    return;
+  }
   const likeButton = event.target.closest("[data-like-course]");
   if (likeButton) {
     toggleCourseLike(likeButton.dataset.likeCourse);
@@ -237,9 +373,62 @@ sharedCourseDetail.addEventListener("click", async (event) => {
 
   saveSharedCourses(courses.filter((item) => String(item.id) !== String(course.id)));
   removeCourseLike(course.id);
+  removeCourseComments(course.id);
   renderSharedCourses();
   showScreen("course-list-screen");
   showListNotice("코스가 삭제되었습니다");
+});
+
+sharedCourseDetail.addEventListener("input", (event) => {
+  if (event.target.matches("#comment-nickname")) sharedCourseDetail.querySelector("#nickname-count").textContent = `${event.target.value.length} / 20`;
+  if (event.target.matches("#comment-content")) sharedCourseDetail.querySelector("#content-count").textContent = `${event.target.value.length} / 300`;
+});
+
+sharedCourseDetail.addEventListener("keydown", (event) => {
+  if (event.target.matches("#comment-content") && event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
+    event.preventDefault();
+    sharedCourseDetail.querySelector("#comment-form")?.requestSubmit();
+  }
+});
+
+sharedCourseDetail.addEventListener("submit", (event) => {
+  if (!event.target.matches("#comment-form")) return;
+  event.preventDefault();
+  const nicknameInput = event.target.elements.nickname;
+  const contentInput = event.target.elements.content;
+  const nickname = nicknameInput.value.trim();
+  const content = contentInput.value.trim();
+  const message = sharedCourseDetail.querySelector("#comment-message");
+  if (!nickname && !content) {
+    message.textContent = "별명과 댓글 내용을 모두 입력해 주세요.";
+    nicknameInput.focus();
+    return;
+  }
+  if (!nickname) {
+    message.textContent = "별명을 입력해 주세요.";
+    nicknameInput.focus();
+    return;
+  }
+  if (!content) {
+    message.textContent = "댓글 내용을 입력해 주세요.";
+    contentInput.focus();
+    return;
+  }
+  if (nickname.length > 20 || content.length > 300) {
+    message.textContent = "별명은 20자, 댓글은 300자 이내로 입력해 주세요.";
+    return;
+  }
+  const courseId = String(selectedSharedCourseId);
+  const store = getCommentStore();
+  const comments = getCourseComments(store, courseId);
+  store.byCourse[courseId] = [...comments, { id: createLocalId("comment"), authorId: getCommentAuthorId(), nickname, content, createdAt: Date.now() }];
+  if (!saveCommentStore(store)) {
+    message.textContent = "댓글을 저장하지 못했습니다. 브라우저 저장 공간을 확인해 주세요.";
+    return;
+  }
+  contentInput.value = "";
+  sharedCourseDetail.querySelector("#content-count").textContent = "0 / 300";
+  renderComments(courseId, "댓글이 등록되었습니다.");
 });
 
 function showListNotice(message) {
@@ -274,9 +463,11 @@ sharedCourseList.addEventListener("click", (event) => {
 });
 
 window.addEventListener("storage", (event) => {
-  if (event.key !== LIKES_STORAGE_KEY) return;
-  renderSharedCourses();
-  if (selectedSharedCourseId && !document.querySelector("#course-detail-screen").hidden) openCourseDetail(selectedSharedCourseId);
+  if (event.key === LIKES_STORAGE_KEY) {
+    renderSharedCourses();
+    if (selectedSharedCourseId && !document.querySelector("#course-detail-screen").hidden) openCourseDetail(selectedSharedCourseId);
+  }
+  if (event.key === COMMENTS_STORAGE_KEY && selectedSharedCourseId && !document.querySelector("#course-detail-screen").hidden) renderComments(selectedSharedCourseId);
 });
 
 courseForm.addEventListener("submit", async (event) => {
