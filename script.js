@@ -12,6 +12,7 @@ const eventMonth = document.querySelector("#event-month");
 const eventList = document.querySelector("#event-list");
 const eventDetail = document.querySelector("#event-detail");
 let selectedEventType = "전체";
+let selectedSharedCourseId = null;
 
 // 외부 API와 연결하지 않은 기능 확인용 가상 행사 데이터입니다. 실제 개최가 확정된 행사가 아닙니다.
 const sampleSeaEvents = [
@@ -46,6 +47,17 @@ function getSharedCourses() {
 
 function saveSharedCourses(items) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+}
+
+function createPasswordSalt() {
+  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+async function hashPassword(password, salt) {
+  const data = new TextEncoder().encode(`${salt}:${password}`);
+  const digest = await crypto.subtle.digest("SHA-256", data);
+  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
 function escapeHtml(value) {
@@ -128,13 +140,49 @@ function renderSharedCourses() {
 function openCourseDetail(id) {
   const course = getSharedCourses().find((item) => item.id === id);
   if (!course) return;
+  selectedSharedCourseId = course.id;
   sharedCourseDetail.innerHTML = `
     <p class="result-intro">TRAVELER'S COURSE</p><h1 id="detail-title" class="course-name">${escapeHtml(course.title)}</h1>
     <p class="detail-meta">✍️ ${escapeHtml(course.author)} · ⏱ ${escapeHtml(course.duration)}</p>
     <div class="detail-tags"><span class="tag">🌊 ${escapeHtml(course.beach)}</span><span class="tag">👥 ${escapeHtml(course.companion)}</span><span class="tag">✨ ${escapeHtml(course.mood)}</span></div>
     <section class="detail-section"><h2>📍 방문 장소 3곳</h2><ol class="detail-places">${course.places.map((place) => `<li>${escapeHtml(place)}</li>`).join("")}</ol></section>
-    <section class="detail-section"><h2>💡 코스 소개와 추천 이유</h2><p>${escapeHtml(course.description)}</p></section>`;
+    <section class="detail-section"><h2>💡 코스 소개와 추천 이유</h2><p>${escapeHtml(course.description)}</p></section>
+    ${course.passwordHash && course.passwordSalt ? '<button class="delete-course-button" type="button" data-delete-course>코스 삭제</button><p class="delete-message" role="alert" aria-live="assertive"></p>' : ""}`;
   showScreen("course-detail-screen");
+}
+
+sharedCourseDetail.addEventListener("click", async (event) => {
+  if (!event.target.closest("[data-delete-course]")) return;
+  const courses = getSharedCourses();
+  const course = courses.find((item) => item.id === selectedSharedCourseId && item.passwordHash && item.passwordSalt);
+  if (!course) return;
+
+  const password = window.prompt("관리 비밀번호를 입력해 주세요.");
+  if (password === null) return;
+  const passwordHash = await hashPassword(password, course.passwordSalt);
+  if (passwordHash !== course.passwordHash) {
+    sharedCourseDetail.querySelector(".delete-message").textContent = "관리 비밀번호가 일치하지 않습니다";
+    return;
+  }
+  if (!window.confirm("정말 이 코스를 삭제하시겠습니까?")) return;
+
+  saveSharedCourses(courses.filter((item) => item.id !== course.id));
+  renderSharedCourses();
+  showScreen("course-list-screen");
+  showListNotice("코스가 삭제되었습니다");
+});
+
+function showListNotice(message) {
+  let notice = document.querySelector("#course-list-notice");
+  if (!notice) {
+    notice = document.createElement("p");
+    notice.id = "course-list-notice";
+    notice.className = "list-notice";
+    notice.setAttribute("role", "status");
+    notice.setAttribute("aria-live", "polite");
+    document.querySelector(".list-heading").after(notice);
+  }
+  notice.textContent = message;
 }
 
 document.querySelectorAll("[data-home]").forEach((button) => button.addEventListener("click", () => showScreen("home-screen")));
@@ -147,7 +195,7 @@ sharedCourseList.addEventListener("click", (event) => {
   if (card) openCourseDetail(card.dataset.courseId);
 });
 
-courseForm.addEventListener("submit", (event) => {
+courseForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   if (!courseForm.checkValidity()) {
     courseFormMessage.textContent = "입력하지 않은 필수 항목이 있어요. 모든 항목을 확인해 주세요.";
@@ -155,11 +203,16 @@ courseForm.addEventListener("submit", (event) => {
     return;
   }
   const values = new FormData(courseForm);
+  const password = values.get("adminPassword");
+  const passwordSalt = createPasswordSalt();
   const course = {
     id: `course-${Date.now()}`,
     title: values.get("title").trim(), author: values.get("author").trim(), beach: values.get("beach"),
     places: [values.get("place1").trim(), values.get("place2").trim(), values.get("place3").trim()],
-    duration: values.get("duration").trim(), companion: values.get("companion"), mood: values.get("mood"), description: values.get("description").trim()
+    duration: values.get("duration").trim(), companion: values.get("companion"), mood: values.get("mood"), description: values.get("description").trim(),
+    passwordSalt,
+    // localStorage 기반 해시는 원문 저장을 피하기 위한 임시 구조이며 실제 서버 보안을 대신하지 않습니다.
+    passwordHash: await hashPassword(password, passwordSalt)
   };
   if ([course.title, course.author, course.duration, course.description, ...course.places].some((value) => !value)) {
     courseFormMessage.textContent = "공백만 입력할 수 없어요. 모든 항목을 내용으로 채워 주세요.";
