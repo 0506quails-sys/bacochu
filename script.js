@@ -3,6 +3,35 @@ const statusMessage = document.querySelector("#status-message");
 const form = document.querySelector("#preference-form");
 const formMessage = document.querySelector("#form-message");
 const resultContainer = document.querySelector("#course-result");
+const STORAGE_KEY = "bacochu-shared-courses";
+const sharedCourseList = document.querySelector("#shared-course-list");
+const sharedCourseDetail = document.querySelector("#shared-course-detail");
+const courseForm = document.querySelector("#course-form");
+const courseFormMessage = document.querySelector("#course-form-message");
+
+const sampleSharedCourses = [
+  { id: "sample-1", title: "다대포 노을 따라 걷는 하루", author: "노을수집가", beach: "다대포해수욕장", places: ["아미산전망대", "고우니생태길", "다대포해수욕장"], duration: "약 4시간", companion: "친구", mood: "사진 촬영", description: "낙동강과 바다가 만나는 풍경부터 붉은 노을까지 차례로 만나는 코스예요. 해 질 무렵 다대포에 도착하면 멋진 사진을 남길 수 있어 추천해요." },
+  { id: "sample-2", title: "영도 바다 쉼표 코스", author: "부산갈매기", beach: "영도 바다", places: ["흰여울문화마을", "절영해안산책로", "태종대"], duration: "약 5시간", companion: "가족", mood: "휴식", description: "골목과 해안 산책로를 천천히 걸으며 부산다운 바다를 즐겨요. 볼거리와 쉬어 갈 곳이 많아 가족과 여유롭게 다녀오기 좋아요." }
+];
+
+function getSharedCourses() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+    if (Array.isArray(saved)) return saved;
+  } catch (error) {
+    console.warn("저장된 코스를 불러오지 못했습니다.", error);
+  }
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(sampleSharedCourses));
+  return [...sampleSharedCourses];
+}
+
+function saveSharedCourses(items) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+}
+
+function escapeHtml(value) {
+  return String(value).replace(/[&<>'"]/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[character]);
+}
 
 // 서버 없이도 바로 시험해 볼 수 있는 부산 바다 코스 예시 데이터입니다.
 const courses = [
@@ -28,6 +57,8 @@ menuButtons.forEach((button) => {
   button.addEventListener("click", () => {
     if (button.dataset.menu === "맞춤 코스 찾기") {
       showScreen("preference-screen");
+    } else if (button.dataset.menu === "여행 코스 공유") {
+      showScreen("share-screen");
     } else {
       statusMessage.textContent = `${button.dataset.menu} 메뉴를 준비하고 있어요!`;
     }
@@ -65,3 +96,61 @@ document.querySelector("#restart-button").addEventListener("click", () => {
   formMessage.textContent = "";
   showScreen("preference-screen");
 });
+
+function renderSharedCourses() {
+  sharedCourseList.innerHTML = getSharedCourses().map((course) => `
+    <button class="shared-course-card" type="button" data-course-id="${escapeHtml(course.id)}">
+      <span class="shared-course-card__top"><span><span class="tag">${escapeHtml(course.beach)}</span><h2>${escapeHtml(course.title)}</h2></span><span aria-hidden="true">→</span></span>
+      <span class="tag">${escapeHtml(course.mood)}</span> <span class="tag">${escapeHtml(course.companion)}와 함께</span>
+      <p>✍️ ${escapeHtml(course.author)} · ⏱ ${escapeHtml(course.duration)}</p>
+    </button>`).join("");
+}
+
+function openCourseDetail(id) {
+  const course = getSharedCourses().find((item) => item.id === id);
+  if (!course) return;
+  sharedCourseDetail.innerHTML = `
+    <p class="result-intro">TRAVELER'S COURSE</p><h1 id="detail-title" class="course-name">${escapeHtml(course.title)}</h1>
+    <p class="detail-meta">✍️ ${escapeHtml(course.author)} · ⏱ ${escapeHtml(course.duration)}</p>
+    <div class="detail-tags"><span class="tag">🌊 ${escapeHtml(course.beach)}</span><span class="tag">👥 ${escapeHtml(course.companion)}</span><span class="tag">✨ ${escapeHtml(course.mood)}</span></div>
+    <section class="detail-section"><h2>📍 방문 장소 3곳</h2><ol class="detail-places">${course.places.map((place) => `<li>${escapeHtml(place)}</li>`).join("")}</ol></section>
+    <section class="detail-section"><h2>💡 코스 소개와 추천 이유</h2><p>${escapeHtml(course.description)}</p></section>`;
+  showScreen("course-detail-screen");
+}
+
+document.querySelectorAll("[data-home]").forEach((button) => button.addEventListener("click", () => showScreen("home-screen")));
+document.querySelectorAll("[data-back-share]").forEach((button) => button.addEventListener("click", () => showScreen("share-screen")));
+document.querySelector("[data-back-list]").addEventListener("click", () => { renderSharedCourses(); showScreen("course-list-screen"); });
+document.querySelector("[data-open-list]").addEventListener("click", () => { renderSharedCourses(); showScreen("course-list-screen"); });
+document.querySelectorAll("[data-open-form]").forEach((button) => button.addEventListener("click", () => { courseFormMessage.textContent = ""; showScreen("course-form-screen"); }));
+sharedCourseList.addEventListener("click", (event) => {
+  const card = event.target.closest("[data-course-id]");
+  if (card) openCourseDetail(card.dataset.courseId);
+});
+
+courseForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+  if (!courseForm.checkValidity()) {
+    courseFormMessage.textContent = "입력하지 않은 필수 항목이 있어요. 모든 항목을 확인해 주세요.";
+    courseForm.querySelector(":invalid")?.focus();
+    return;
+  }
+  const values = new FormData(courseForm);
+  const course = {
+    id: `course-${Date.now()}`,
+    title: values.get("title").trim(), author: values.get("author").trim(), beach: values.get("beach"),
+    places: [values.get("place1").trim(), values.get("place2").trim(), values.get("place3").trim()],
+    duration: values.get("duration").trim(), companion: values.get("companion"), mood: values.get("mood"), description: values.get("description").trim()
+  };
+  if ([course.title, course.author, course.duration, course.description, ...course.places].some((value) => !value)) {
+    courseFormMessage.textContent = "공백만 입력할 수 없어요. 모든 항목을 내용으로 채워 주세요.";
+    return;
+  }
+  saveSharedCourses([course, ...getSharedCourses()]);
+  courseForm.reset();
+  courseFormMessage.textContent = "";
+  renderSharedCourses();
+  showScreen("course-list-screen");
+});
+
+getSharedCourses();

@@ -51,11 +51,11 @@
             <span class="action-card__arrow" aria-hidden="true">→</span>
           </button>
 
-          <button class="action-card" type="button" data-menu="숨은 명소 보기">
-            <span class="action-card__icon" aria-hidden="true">📍</span>
+          <button class="action-card" type="button" data-menu="여행 코스 공유">
+            <span class="action-card__icon" aria-hidden="true">📝</span>
             <span class="action-card__text">
-              <strong>숨은 명소 보기</strong>
-              <small>현지인만 아는 특별한 장소</small>
+              <strong>여행 코스 공유</strong>
+              <small>나만의 부산 바다 여행을 나눠요</small>
             </span>
             <span class="action-card__arrow" aria-hidden="true">→</span>
           </button>
@@ -125,6 +125,54 @@
         </header>
         <div id="course-result"></div>
         <button id="restart-button" class="restart-button" type="button">↻ 처음부터 다시 선택하기</button>
+      </section>
+
+      <section id="share-screen" class="screen inner-screen" aria-labelledby="share-title" hidden>
+        <header class="inner-header">
+          <button class="back-button" type="button" data-home aria-label="홈으로 가기">←</button>
+          <div><p class="inner-header__eyebrow">SHARE YOUR COURSE</p><h1 id="share-title">여행 코스 공유</h1></div>
+        </header>
+        <p class="form-guide">부산 바다에서 보낸 특별한 하루를 함께 나눠보세요.</p>
+        <div class="share-menu">
+          <button class="action-card" type="button" data-open-list><span class="action-card__icon">🌊</span><span class="action-card__text"><strong>여행 코스 둘러보기</strong><small>여행자들이 공유한 코스를 만나요</small></span><span>→</span></button>
+          <button class="action-card action-card--primary" type="button" data-open-form><span class="action-card__icon">✍️</span><span class="action-card__text"><strong>새 코스 올리기</strong><small>나만의 코스를 직접 작성해요</small></span><span>→</span></button>
+        </div>
+      </section>
+
+      <section id="course-list-screen" class="screen inner-screen" aria-labelledby="list-title" hidden>
+        <header class="inner-header inner-header--nav">
+          <button class="back-button" type="button" data-back-share aria-label="뒤로 가기">←</button>
+          <div><p class="inner-header__eyebrow">TRAVEL STORIES</p><h1 id="list-title">여행 코스 둘러보기</h1></div>
+          <button class="home-button" type="button" data-home aria-label="홈으로 가기">⌂</button>
+        </header>
+        <div class="list-heading"><p class="form-guide">마음에 드는 코스를 눌러 자세히 보세요.</p><button type="button" data-open-form>+ 새 코스</button></div>
+        <div id="shared-course-list" class="shared-course-list"></div>
+      </section>
+
+      <section id="course-form-screen" class="screen inner-screen" aria-labelledby="course-form-title" hidden>
+        <header class="inner-header inner-header--nav">
+          <button class="back-button" type="button" data-back-share aria-label="뒤로 가기">←</button>
+          <div><p class="inner-header__eyebrow">NEW COURSE</p><h1 id="course-form-title">새 코스 올리기</h1></div>
+          <button class="home-button" type="button" data-home aria-label="홈으로 가기">⌂</button>
+        </header>
+        <form id="course-form" class="course-form" novalidate>
+          <p class="required-guide"><span>*</span> 모든 항목은 필수입니다.</p>
+          <label>코스 제목<input name="title" type="text" maxlength="40" required placeholder="예: 광안리 노을 산책 코스" /></label>
+          <label>작성자 이름 또는 별명<input name="author" type="text" maxlength="20" required placeholder="예: 바다사랑" /></label>
+          <label>부산의 바다 또는 해수욕장 선택<select name="beach" required><option value="">선택해 주세요</option><option>광안리해수욕장</option><option>해운대해수욕장</option><option>송정해수욕장</option><option>다대포해수욕장</option><option>송도해수욕장</option><option>일광해수욕장</option><option>임랑해수욕장</option><option>영도 바다</option><option>기장 바다</option></select></label>
+          <fieldset><legend>방문 장소 3곳</legend><div class="place-inputs"><input name="place1" required placeholder="첫 번째 장소" aria-label="첫 번째 방문 장소" /><input name="place2" required placeholder="두 번째 장소" aria-label="두 번째 방문 장소" /><input name="place3" required placeholder="세 번째 장소" aria-label="세 번째 방문 장소" /></div></fieldset>
+          <label>예상 소요 시간<input name="duration" type="text" maxlength="20" required placeholder="예: 약 4시간" /></label>
+          <fieldset><legend>누구와 가기 좋은지</legend><div class="radio-row"><label><input type="radio" name="companion" value="혼자" required /><span>혼자</span></label><label><input type="radio" name="companion" value="친구" /><span>친구</span></label><label><input type="radio" name="companion" value="가족" /><span>가족</span></label></div></fieldset>
+          <fieldset><legend>코스 분위기</legend><div class="radio-row radio-row--four"><label><input type="radio" name="mood" value="휴식" required /><span>휴식</span></label><label><input type="radio" name="mood" value="관광" /><span>관광</span></label><label><input type="radio" name="mood" value="사진 촬영" /><span>사진 촬영</span></label><label><input type="radio" name="mood" value="체험" /><span>체험</span></label></div></fieldset>
+          <label>코스 소개와 추천 이유<textarea name="description" rows="5" maxlength="500" required placeholder="코스의 매력과 추천 이유를 알려주세요."></textarea></label>
+          <p id="course-form-message" class="form-message" role="alert" aria-live="polite"></p>
+          <button class="recommend-button" type="submit">코스 등록하기 <span>→</span></button>
+        </form>
+      </section>
+
+      <section id="course-detail-screen" class="screen inner-screen" aria-labelledby="detail-title" hidden>
+        <header class="inner-header inner-header--nav"><button class="back-button" type="button" data-back-list aria-label="목록으로 돌아가기">←</button><p>공유 여행 코스</p><button class="home-button" type="button" data-home aria-label="홈으로 가기">⌂</button></header>
+        <article id="shared-course-detail"></article>
       </section>
     </main>
 
