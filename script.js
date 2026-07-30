@@ -4,6 +4,7 @@ const form = document.querySelector("#preference-form");
 const formMessage = document.querySelector("#form-message");
 const resultContainer = document.querySelector("#course-result");
 const STORAGE_KEY = "bacochu-shared-courses";
+const LIKES_STORAGE_KEY = "bacochu-course-likes";
 const sharedCourseList = document.querySelector("#shared-course-list");
 const sharedCourseDetail = document.querySelector("#shared-course-detail");
 const courseForm = document.querySelector("#course-form");
@@ -63,6 +64,45 @@ function getSharedCourses() {
 
 function saveSharedCourses(items) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+}
+
+// Firebase와 연결하기 전까지 좋아요는 이용자 전체가 아닌 이 브라우저에서만 보관되는 임시 데이터입니다.
+function getCourseLikes() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(LIKES_STORAGE_KEY));
+    if (saved && typeof saved === "object" && !Array.isArray(saved)) return saved;
+  } catch (error) {
+    console.warn("저장된 좋아요를 불러오지 못했습니다.", error);
+  }
+  return {};
+}
+
+function getCourseLike(courseId) {
+  const saved = getCourseLikes()[String(courseId)];
+  const liked = saved?.liked === true;
+  const count = Math.max(0, Number.isFinite(saved?.count) ? Math.floor(saved.count) : (liked ? 1 : 0));
+  return { liked, count };
+}
+
+function toggleCourseLike(courseId) {
+  const id = String(courseId);
+  const likes = getCourseLikes();
+  const current = getCourseLike(id);
+  const liked = !current.liked;
+  likes[id] = { liked, count: Math.max(0, current.count + (liked ? 1 : -1)) };
+  localStorage.setItem(LIKES_STORAGE_KEY, JSON.stringify(likes));
+}
+
+function removeCourseLike(courseId) {
+  const likes = getCourseLikes();
+  delete likes[String(courseId)];
+  localStorage.setItem(LIKES_STORAGE_KEY, JSON.stringify(likes));
+}
+
+function likeButtonMarkup(courseId) {
+  const { liked, count } = getCourseLike(courseId);
+  const action = liked ? "좋아요 취소" : "좋아요";
+  return `<button class="like-button${liked ? " is-liked" : ""}" type="button" data-like-course="${escapeHtml(courseId)}" aria-label="${action}, 현재 ${count}개" aria-pressed="${liked}"><span class="like-button__heart" aria-hidden="true">${liked ? "♥" : "♡"}</span><span class="like-button__count" aria-hidden="true">${count}</span></button>`;
 }
 
 function createPasswordSalt() {
@@ -146,11 +186,14 @@ document.querySelector("#restart-button").addEventListener("click", () => {
 
 function renderSharedCourses() {
   sharedCourseList.innerHTML = getSharedCourses().map((course) => `
-    <button class="shared-course-card" type="button" data-course-id="${escapeHtml(course.id)}">
-      <span class="shared-course-card__top"><span><span class="tag">${escapeHtml(course.beach)}</span><h2>${escapeHtml(course.title)}</h2></span><span aria-hidden="true">→</span></span>
-      <span class="tag">${escapeHtml(course.mood)}</span> <span class="tag">${escapeHtml(course.companion)}와 함께</span>
-      <p>✍️ ${escapeHtml(course.author)} · ⏱ ${escapeHtml(course.duration)}</p>
-    </button>`).join("");
+    <article class="shared-course-card" data-course-card="${escapeHtml(course.id)}">
+      <button class="shared-course-card__open" type="button" data-course-id="${escapeHtml(course.id)}" aria-label="${escapeHtml(course.title)} 상세 보기">
+        <span class="shared-course-card__top"><span><span class="tag">${escapeHtml(course.beach)}</span><span class="shared-course-card__title">${escapeHtml(course.title)}</span></span><span aria-hidden="true">→</span></span>
+        <span class="tag">${escapeHtml(course.mood)}</span> <span class="tag">${escapeHtml(course.companion)}와 함께</span>
+        <span class="shared-course-card__meta">✍️ ${escapeHtml(course.author)} · ⏱ ${escapeHtml(course.duration)}</span>
+      </button>
+      ${likeButtonMarkup(course.id)}
+    </article>`).join("");
 }
 
 function openCourseDetail(id) {
@@ -161,6 +204,7 @@ function openCourseDetail(id) {
   sharedCourseDetail.innerHTML = `
     <p class="result-intro">TRAVELER'S COURSE</p><h1 id="detail-title" class="course-name">${escapeHtml(course.title)}</h1>
     <p class="detail-meta">✍️ ${escapeHtml(course.author)} · ⏱ ${escapeHtml(course.duration)}</p>
+    <div class="detail-like">${likeButtonMarkup(course.id)}</div>
     <div class="detail-tags"><span class="tag">🌊 ${escapeHtml(course.beach)}</span><span class="tag">👥 ${escapeHtml(course.companion)}</span><span class="tag">✨ ${escapeHtml(course.mood)}</span></div>
     <section class="detail-section"><h2>📍 방문 장소 3곳</h2><ol class="detail-places">${course.places.map((place) => `<li>${escapeHtml(place)}</li>`).join("")}</ol></section>
     <section class="detail-section"><h2>💡 코스 소개와 추천 이유</h2><p>${escapeHtml(course.description)}</p></section>
@@ -169,6 +213,13 @@ function openCourseDetail(id) {
 }
 
 sharedCourseDetail.addEventListener("click", async (event) => {
+  const likeButton = event.target.closest("[data-like-course]");
+  if (likeButton) {
+    toggleCourseLike(likeButton.dataset.likeCourse);
+    renderSharedCourses();
+    openCourseDetail(likeButton.dataset.likeCourse);
+    return;
+  }
   if (!event.target.closest("[data-delete-course]")) return;
   const courses = getSharedCourses();
   const course = courses.find((item) => String(item.id) === selectedSharedCourseId && isUserCreatedCourse(item));
@@ -185,6 +236,7 @@ sharedCourseDetail.addEventListener("click", async (event) => {
   if (!window.confirm("정말 이 코스를 삭제하시겠습니까?")) return;
 
   saveSharedCourses(courses.filter((item) => String(item.id) !== String(course.id)));
+  removeCourseLike(course.id);
   renderSharedCourses();
   showScreen("course-list-screen");
   showListNotice("코스가 삭제되었습니다");
@@ -209,8 +261,20 @@ document.querySelector("[data-back-list]").addEventListener("click", () => { ren
 document.querySelector("[data-open-list]").addEventListener("click", () => { renderSharedCourses(); showScreen("course-list-screen"); });
 document.querySelectorAll("[data-open-form]").forEach((button) => button.addEventListener("click", () => { courseFormMessage.textContent = ""; showScreen("course-form-screen"); }));
 sharedCourseList.addEventListener("click", (event) => {
+  const likeButton = event.target.closest("[data-like-course]");
+  if (likeButton) {
+    toggleCourseLike(likeButton.dataset.likeCourse);
+    renderSharedCourses();
+    return;
+  }
   const card = event.target.closest("[data-course-id]");
   if (card) openCourseDetail(card.dataset.courseId);
+});
+
+window.addEventListener("storage", (event) => {
+  if (event.key !== LIKES_STORAGE_KEY) return;
+  renderSharedCourses();
+  if (selectedSharedCourseId && !document.querySelector("#course-detail-screen").hidden) openCourseDetail(selectedSharedCourseId);
 });
 
 courseForm.addEventListener("submit", async (event) => {
