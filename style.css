@@ -349,7 +349,9 @@ h2 {
 .detail-places { margin: 0; padding: 0; list-style: none; counter-reset: places; }
 .detail-places li { display: flex; align-items: center; gap: 10px; padding: 8px 0; font-size: .85rem; font-weight: 700; }
 .detail-places li::before { counter-increment: places; content: counter(places); display: grid; width: 28px; height: 28px; place-items: center; color: var(--white); background: var(--aqua); border-radius: 50%; font-size: .72rem; }
-.delete-course-button { width: 100%; padding: 14px 18px; color: #b33e31; background: var(--white); border: 1px solid rgba(200,74,56,.35); border-radius: 15px; cursor: pointer; font-weight: 800; }
+.course-management { margin-top: 22px; }
+.delete-course-button { width: 100%; padding: 16px 18px; color: var(--white); background: #c84a38; border: 0; border-radius: 15px; box-shadow: 0 10px 22px rgba(200,74,56,.24); cursor: pointer; font-weight: 800; }
+.delete-course-button:hover { background: #ad382b; }
 .delete-course-button:focus-visible { outline: 3px solid var(--coral); outline-offset: 2px; }
 .delete-message { min-height: 20px; margin: 9px 0 0; color: #c84a38; text-align: center; font-size: .78rem; }
 .list-notice { margin: -8px 0 16px; padding: 11px 14px; color: var(--blue); text-align: center; background: var(--sky); border-radius: 13px; font-size: .8rem; font-weight: 700; }
