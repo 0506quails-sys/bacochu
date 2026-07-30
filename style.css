@@ -321,10 +321,20 @@ h2 {
 .list-heading { display: flex; align-items: start; justify-content: space-between; gap: 12px; }
 .list-heading button { flex: none; padding: 8px 12px; color: var(--white); background: var(--coral); border: 0; border-radius: 12px; cursor: pointer; font-size: .75rem; font-weight: 800; }
 .shared-course-list { display: grid; gap: 13px; }
-.shared-course-card { width: 100%; padding: 18px; color: var(--navy); text-align: left; background: var(--white); border: 1px solid rgba(20,125,146,.1); border-radius: 19px; box-shadow: 0 7px 18px rgba(6,59,77,.07); cursor: pointer; }
+.shared-course-card { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; width: 100%; color: var(--navy); background: var(--white); border: 1px solid rgba(20,125,146,.1); border-radius: 19px; box-shadow: 0 7px 18px rgba(6,59,77,.07); overflow: hidden; }
+.shared-course-card__open { min-width: 0; padding: 18px 8px 18px 18px; color: inherit; text-align: left; background: transparent; border: 0; cursor: pointer; }
+.shared-course-card__open:focus-visible { outline: 3px solid var(--coral); outline-offset: -4px; }
 .shared-course-card__top { display: flex; justify-content: space-between; gap: 10px; margin-bottom: 9px; }
-.shared-course-card h2 { font-size: 1.05rem; }
-.shared-course-card p { margin: 7px 0 0; color: var(--muted); font-size: .76rem; }
+.shared-course-card__title { display: block; margin-top: 4px; font-size: 1.05rem; font-weight: 800; letter-spacing: -.06em; }
+.shared-course-card__meta { display: block; margin: 7px 0 0; color: var(--muted); font-size: .76rem; overflow-wrap: anywhere; }
+.like-button { display: inline-flex; min-width: 58px; min-height: 44px; align-items: center; justify-content: center; gap: 5px; margin: 12px 12px 14px 0; padding: 8px 10px; color: var(--muted); background: #f6fbfa; border: 1px solid rgba(20,125,146,.16); border-radius: 14px; cursor: pointer; font-weight: 800; line-height: 1; }
+.like-button__heart { color: var(--blue); font-size: 1.35rem; }
+.like-button__count { min-width: 1ch; font-size: .78rem; }
+.like-button.is-liked { color: #b9363c; background: #fff0ee; border-color: rgba(200,74,56,.28); }
+.like-button.is-liked .like-button__heart { color: #d9474d; }
+.like-button:focus-visible { outline: 3px solid var(--coral); outline-offset: 2px; }
+.detail-like { display: flex; margin: -10px 0 20px; }
+.detail-like .like-button { margin: 0; }
 .tag { display: inline-block; padding: 5px 9px; color: var(--blue); background: var(--sky); border-radius: 12px; font-size: .68rem; font-weight: 700; }
 .course-form { display: grid; gap: 21px; }
 .required-guide { margin: -6px 0 0; color: var(--muted); font-size: .75rem; }
