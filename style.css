@@ -1,0 +1,290 @@
+@import url("https://fonts.googleapis.com/css2?family=Gowun+Dodum&family=Noto+Sans+KR:wght@400;500;700;800&display=swap");
+
+:root {
+  --navy: #063b4d;
+  --blue: #147d92;
+  --aqua: #4ec4c2;
+  --sky: #dff6f4;
+  --sand: #fffaf0;
+  --coral: #ff765e;
+  --white: #ffffff;
+  --muted: #61777d;
+  --shadow: 0 12px 30px rgba(6, 59, 77, 0.12);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  color: var(--navy);
+  background: #d9efed;
+  font-family: "Noto Sans KR", sans-serif;
+}
+
+button {
+  font: inherit;
+}
+
+.app-shell {
+  width: 100%;
+  min-height: 100vh;
+  overflow: hidden;
+  background: var(--sand);
+}
+
+.hero {
+  position: relative;
+  min-height: 43vh;
+  padding: 24px 24px 50px;
+  overflow: hidden;
+  color: var(--white);
+  background: linear-gradient(145deg, #0e8192 0%, #32aaa8 58%, #8ad9cf 100%);
+  border-radius: 0 0 42px 42px;
+}
+
+.brand {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-weight: 800;
+}
+
+.brand__mark {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  background: rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 50%;
+}
+
+.brand__name {
+  letter-spacing: -0.03em;
+}
+
+.hero__content {
+  position: relative;
+  z-index: 2;
+  margin-top: clamp(42px, 9vh, 90px);
+}
+
+.hero__eyebrow,
+.menu__eyebrow {
+  margin: 0 0 7px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.17em;
+}
+
+.hero__eyebrow {
+  color: #d8fffa;
+}
+
+h1 {
+  margin: 0;
+  font-family: "Gowun Dodum", sans-serif;
+  font-size: clamp(3.4rem, 16vw, 5rem);
+  line-height: 1;
+  letter-spacing: -0.08em;
+}
+
+.hero__description {
+  margin: 12px 0 0;
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+}
+
+.hero__message {
+  margin: 21px 0 0;
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 0.88rem;
+  line-height: 1.65;
+}
+
+.hero__decoration {
+  position: absolute;
+  pointer-events: none;
+}
+
+.hero__decoration--sun {
+  top: 48px;
+  right: 34px;
+  width: 52px;
+  height: 52px;
+  background: #ffd779;
+  border-radius: 50%;
+  box-shadow: 0 0 0 12px rgba(255, 215, 121, 0.13);
+}
+
+.hero__decoration--wave {
+  right: -86px;
+  bottom: -95px;
+  width: 280px;
+  height: 280px;
+  border: 45px solid rgba(255, 255, 255, 0.12);
+  border-radius: 50%;
+  box-shadow: 0 0 0 38px rgba(255, 255, 255, 0.07);
+}
+
+.menu {
+  padding: 29px 20px 36px;
+}
+
+.menu__heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 21px;
+}
+
+.menu__eyebrow {
+  color: var(--coral);
+  letter-spacing: -0.02em;
+}
+
+h2 {
+  margin: 0;
+  font-size: 1.35rem;
+  letter-spacing: -0.06em;
+}
+
+.menu__weather {
+  flex: none;
+  padding: 7px 10px;
+  color: var(--blue);
+  background: var(--white);
+  border-radius: 20px;
+  box-shadow: 0 5px 15px rgba(6, 59, 77, 0.08);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.menu__actions {
+  display: grid;
+  gap: 12px;
+}
+
+.action-card {
+  display: grid;
+  grid-template-columns: 48px 1fr 25px;
+  align-items: center;
+  width: 100%;
+  min-height: 79px;
+  padding: 14px 15px;
+  color: var(--navy);
+  text-align: left;
+  background: var(--white);
+  border: 1px solid rgba(20, 125, 146, 0.09);
+  border-radius: 20px;
+  box-shadow: 0 8px 20px rgba(6, 59, 77, 0.07);
+  cursor: pointer;
+  transition: transform 180ms ease, box-shadow 180ms ease;
+}
+
+.action-card--primary {
+  color: var(--white);
+  background: var(--navy);
+  border-color: var(--navy);
+  box-shadow: var(--shadow);
+}
+
+.action-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 13px 26px rgba(6, 59, 77, 0.14);
+}
+
+.action-card:active {
+  transform: translateY(0);
+}
+
+.action-card:focus-visible {
+  outline: 3px solid var(--coral);
+  outline-offset: 3px;
+}
+
+.action-card__icon {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  background: var(--sky);
+  border-radius: 13px;
+  font-size: 1.15rem;
+}
+
+.action-card--primary .action-card__icon {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.action-card__text {
+  display: grid;
+  gap: 4px;
+}
+
+.action-card__text strong {
+  font-size: 0.97rem;
+  letter-spacing: -0.04em;
+}
+
+.action-card__text small {
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
+.action-card--primary small {
+  color: rgba(255, 255, 255, 0.66);
+}
+
+.action-card__arrow {
+  font-size: 1.1rem;
+  transition: transform 180ms ease;
+}
+
+.action-card:hover .action-card__arrow {
+  transform: translateX(4px);
+}
+
+.status-message {
+  min-height: 21px;
+  margin: 18px 4px 0;
+  color: var(--blue);
+  font-size: 0.78rem;
+  text-align: center;
+}
+
+@media (min-width: 680px) {
+  body {
+    display: grid;
+    padding: 32px;
+    place-items: center;
+  }
+
+  .app-shell {
+    width: min(100%, 460px);
+    min-height: min(860px, calc(100vh - 64px));
+    border-radius: 38px;
+    box-shadow: 0 25px 70px rgba(6, 59, 77, 0.2);
+  }
+
+  .hero {
+    min-height: 370px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition: none !important;
+  }
+}
