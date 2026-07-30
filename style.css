@@ -36,6 +36,57 @@ button {
   background: var(--sand);
 }
 
+.screen { display: none; }
+.screen--active { display: block; }
+
+.inner-screen {
+  min-height: 100vh;
+  padding: 22px 20px 36px;
+  background: var(--sand);
+}
+
+.inner-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin: -22px -20px 26px;
+  padding: 25px 20px 28px;
+  color: var(--white);
+  background: linear-gradient(145deg, #0e8192, #4ec4c2);
+  border-radius: 0 0 30px 30px;
+}
+
+.inner-header h1 { font-family: inherit; font-size: 1.55rem; letter-spacing: -0.06em; }
+.inner-header__eyebrow { margin: 0 0 5px; color: #d8fffa; font-size: .68rem; font-weight: 700; letter-spacing: .14em; }
+.back-button { width: 42px; height: 42px; flex: none; color: white; background: rgba(255,255,255,.16); border: 1px solid rgba(255,255,255,.35); border-radius: 50%; cursor: pointer; font-size: 1.3rem; }
+.back-button:focus-visible, .recommend-button:focus-visible, .restart-button:focus-visible { outline: 3px solid var(--coral); outline-offset: 3px; }
+.form-guide { margin: 0 0 24px; color: var(--muted); font-size: .84rem; }
+.preference-form fieldset { margin: 0 0 27px; padding: 0; border: 0; }
+.preference-form legend { margin-bottom: 12px; font-size: 1rem; font-weight: 800; }
+.preference-form legend span { margin-right: 6px; color: var(--coral); font-size: .72rem; }
+.choice-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.choice input { position: absolute; opacity: 0; pointer-events: none; }
+.choice span { display: grid; min-height: 70px; padding: 11px 5px; place-items: center; color: var(--muted); text-align: center; background: var(--white); border: 1px solid rgba(20,125,146,.13); border-radius: 16px; box-shadow: 0 5px 13px rgba(6,59,77,.05); cursor: pointer; font-size: .76rem; font-weight: 700; }
+.choice input:checked + span { color: var(--white); background: var(--navy); border-color: var(--navy); box-shadow: var(--shadow); }
+.choice input:focus-visible + span { outline: 3px solid var(--coral); outline-offset: 2px; }
+.form-message { min-height: 20px; margin: -8px 0 8px; color: #c84a38; text-align: center; font-size: .78rem; }
+.recommend-button, .restart-button { width: 100%; padding: 16px 20px; color: var(--white); background: var(--coral); border: 0; border-radius: 17px; cursor: pointer; font-weight: 800; box-shadow: 0 10px 22px rgba(255,118,94,.25); }
+.recommend-button { display: flex; justify-content: space-between; }
+.inner-header--compact { justify-content: flex-start; padding-bottom: 23px; }
+.inner-header--compact p { margin: 0; font-weight: 800; }
+.result-intro { margin: 3px 0 6px; color: var(--coral); font-size: .72rem; font-weight: 800; letter-spacing: .08em; }
+.course-name { margin: 0; font-family: "Gowun Dodum", sans-serif; font-size: 2rem; line-height: 1.25; letter-spacing: -.06em; }
+.course-summary { display: inline-block; margin: 13px 0 24px; padding: 7px 11px; color: var(--blue); background: var(--sky); border-radius: 18px; font-size: .78rem; font-weight: 700; }
+.course-places { position: relative; display: grid; gap: 11px; margin-bottom: 21px; }
+.place-card { display: grid; grid-template-columns: 38px 1fr; align-items: center; gap: 12px; padding: 14px; background: var(--white); border-radius: 16px; box-shadow: 0 6px 16px rgba(6,59,77,.07); }
+.place-number { display: grid; width: 34px; height: 34px; place-items: center; color: white; background: var(--aqua); border-radius: 50%; font-weight: 800; }
+.place-card strong { display: block; font-size: .92rem; }
+.place-card small { color: var(--muted); font-size: .72rem; }
+.reason-card { margin-bottom: 22px; padding: 18px; background: #fff1e9; border-radius: 18px; }
+.reason-card h3 { margin: 0 0 7px; font-size: .9rem; }
+.reason-card p { margin: 0; color: #6c625d; font-size: .8rem; line-height: 1.65; }
+.restart-button { color: var(--navy); background: var(--white); border: 1px solid rgba(20,125,146,.14); box-shadow: none; }
+
 .hero {
   position: relative;
   min-height: 43vh;
@@ -274,6 +325,8 @@ h2 {
     border-radius: 38px;
     box-shadow: 0 25px 70px rgba(6, 59, 77, 0.2);
   }
+
+  .inner-screen { min-height: min(860px, calc(100vh - 64px)); }
 
   .hero {
     min-height: 370px;

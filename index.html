@@ -12,7 +12,8 @@
   </head>
   <body>
     <main class="app-shell">
-      <section class="hero" aria-labelledby="app-title">
+      <section id="home-screen" class="screen screen--active" aria-labelledby="app-title">
+        <section class="hero">
         <div class="hero__decoration hero__decoration--sun" aria-hidden="true"></div>
         <div class="hero__decoration hero__decoration--wave" aria-hidden="true"></div>
 
@@ -29,7 +30,7 @@
             오늘의 기분에 꼭 맞는<br />부산 바다 여행을 시작해 보세요.
           </p>
         </div>
-      </section>
+        </section>
 
       <section class="menu" aria-labelledby="menu-title">
         <div class="menu__heading">
@@ -70,6 +71,60 @@
         </div>
 
         <p id="status-message" class="status-message" role="status" aria-live="polite"></p>
+      </section>
+      </section>
+
+      <section id="preference-screen" class="screen inner-screen" aria-labelledby="preference-title" hidden>
+        <header class="inner-header">
+          <button class="back-button" type="button" data-back aria-label="첫 화면으로 돌아가기">←</button>
+          <div>
+            <p class="inner-header__eyebrow">MY BUSAN COURSE</p>
+            <h1 id="preference-title">어떤 여행을 원하세요?</h1>
+          </div>
+        </header>
+
+        <form id="preference-form" class="preference-form">
+          <p class="form-guide">각 항목에서 하나씩 골라주세요.</p>
+
+          <fieldset>
+            <legend><span>01</span> 여행 분위기</legend>
+            <div class="choice-grid">
+              <label class="choice"><input type="radio" name="mood" value="quiet" /><span>🌿 조용한 휴식</span></label>
+              <label class="choice"><input type="radio" name="mood" value="lively" /><span>🎡 활기찬 관광</span></label>
+              <label class="choice"><input type="radio" name="mood" value="photo" /><span>📷 사진 촬영</span></label>
+            </div>
+          </fieldset>
+
+          <fieldset>
+            <legend><span>02</span> 함께 가는 사람</legend>
+            <div class="choice-grid">
+              <label class="choice"><input type="radio" name="companion" value="solo" /><span>🎒 혼자</span></label>
+              <label class="choice"><input type="radio" name="companion" value="friends" /><span>👫 친구</span></label>
+              <label class="choice"><input type="radio" name="companion" value="family" /><span>👨‍👩‍👧 가족</span></label>
+            </div>
+          </fieldset>
+
+          <fieldset>
+            <legend><span>03</span> 원하는 활동</legend>
+            <div class="choice-grid">
+              <label class="choice"><input type="radio" name="activity" value="walk" /><span>👟 산책</span></label>
+              <label class="choice"><input type="radio" name="activity" value="food" /><span>🍽️ 맛집</span></label>
+              <label class="choice"><input type="radio" name="activity" value="sea" /><span>🏄 바다 체험</span></label>
+            </div>
+          </fieldset>
+
+          <p id="form-message" class="form-message" role="alert" aria-live="polite"></p>
+          <button class="recommend-button" type="submit">코스 추천받기 <span aria-hidden="true">→</span></button>
+        </form>
+      </section>
+
+      <section id="result-screen" class="screen inner-screen result-screen" aria-label="맞춤 코스 추천 결과" hidden>
+        <header class="inner-header inner-header--compact">
+          <button class="back-button" type="button" data-back-to-form aria-label="취향 선택으로 돌아가기">←</button>
+          <p>나만의 바다 코스</p>
+        </header>
+        <div id="course-result"></div>
+        <button id="restart-button" class="restart-button" type="button">↻ 처음부터 다시 선택하기</button>
       </section>
     </main>
 
