@@ -165,6 +165,10 @@
           <fieldset><legend>누구와 가기 좋은지</legend><div class="radio-row"><label><input type="radio" name="companion" value="혼자" required /><span>혼자</span></label><label><input type="radio" name="companion" value="친구" /><span>친구</span></label><label><input type="radio" name="companion" value="가족" /><span>가족</span></label></div></fieldset>
           <fieldset><legend>코스 분위기</legend><div class="radio-row radio-row--four"><label><input type="radio" name="mood" value="휴식" required /><span>휴식</span></label><label><input type="radio" name="mood" value="관광" /><span>관광</span></label><label><input type="radio" name="mood" value="사진 촬영" /><span>사진 촬영</span></label><label><input type="radio" name="mood" value="체험" /><span>체험</span></label></div></fieldset>
           <label>코스 소개와 추천 이유<textarea name="description" rows="5" maxlength="500" required placeholder="코스의 매력과 추천 이유를 알려주세요."></textarea></label>
+          <label>관리 비밀번호
+            <input name="adminPassword" type="password" minlength="4" maxlength="12" required autocomplete="new-password" placeholder="4~12자로 입력해 주세요" />
+            <small class="input-guide">나중에 자신의 코스를 수정하거나 삭제할 때 사용하는 비밀번호입니다.</small>
+          </label>
           <p id="course-form-message" class="form-message" role="alert" aria-live="polite"></p>
           <button class="recommend-button" type="submit">코스 등록하기 <span>→</span></button>
         </form>
