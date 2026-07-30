@@ -8,6 +8,25 @@ const sharedCourseList = document.querySelector("#shared-course-list");
 const sharedCourseDetail = document.querySelector("#shared-course-detail");
 const courseForm = document.querySelector("#course-form");
 const courseFormMessage = document.querySelector("#course-form-message");
+const eventMonth = document.querySelector("#event-month");
+const eventList = document.querySelector("#event-list");
+const eventDetail = document.querySelector("#event-detail");
+let selectedEventType = "전체";
+
+// 외부 API와 연결하지 않은 기능 확인용 가상 행사 데이터입니다. 실제 개최가 확정된 행사가 아닙니다.
+const sampleSeaEvents = [
+  { id: "sea-jan", month: 1, name: "송정 새해 바다 산책 주간", date: "1월 2일 ~ 1월 8일", place: "송정해수욕장 안내광장", type: "체험", description: "겨울 바다를 천천히 걸으며 해변 생태 이야기를 듣는 가상 프로그램입니다.", sea: "송정해수욕장", audience: "가벼운 산책을 좋아하는 여행자", tip: "바닷바람을 막을 따뜻한 겉옷을 준비해 주세요.", directions: "동해선 송정역에서 도보로 이동하는 설정입니다." },
+  { id: "sea-mar", month: 3, name: "영도 파도 사진 전시", date: "3월 9일 ~ 3월 24일", place: "흰여울 해안 갤러리(가상)", type: "전시", description: "영도 바다의 사계절을 사진으로 만나는 가상 전시입니다.", sea: "영도 바다", audience: "사진과 조용한 실내 관람을 즐기는 분", tip: "해안 산책로와 함께 둘러보는 코스를 추천합니다.", directions: "부산역에서 영도 방면 시내버스를 이용하는 설정입니다." },
+  { id: "sea-apr", month: 4, name: "다대포 노을 음악회", date: "4월 20일", place: "다대포해수욕장 잔디광장", type: "공연", description: "노을과 함께 어쿠스틱 음악을 감상하는 가상 야외 공연입니다.", sea: "다대포해수욕장", audience: "가족, 친구와 노을을 즐기고 싶은 분", tip: "돗자리와 저녁 기온에 대비할 얇은 겉옷이 유용합니다.", directions: "도시철도 1호선 다대포해수욕장역에서 도보 이동하는 설정입니다." },
+  { id: "sea-may", month: 5, name: "광안리 바다 공예 마켓", date: "5월 11일 ~ 5월 12일", place: "광안리 해변 산책로", type: "체험", description: "바다를 주제로 한 소품을 보고 간단한 만들기에 참여하는 가상 행사입니다.", sea: "광안리해수욕장", audience: "공예를 좋아하는 친구와 가족", tip: "체험별 운영 시간이 다르다는 가정이므로 현장 안내를 확인해 주세요.", directions: "도시철도 2호선 광안역에서 도보 이동하는 설정입니다." },
+  { id: "sea-jun", month: 6, name: "송도 해변 문화 축제", date: "6월 15일 ~ 6월 16일", place: "송도해수욕장 중앙광장", type: "축제", description: "해변 놀이와 지역 문화를 함께 즐기는 가상 축제입니다.", sea: "송도해수욕장", audience: "다양한 해변 프로그램을 즐기고 싶은 분", tip: "햇빛을 피할 모자와 개인 물병을 준비해 주세요.", directions: "남포동에서 송도 방면 시내버스를 이용하는 설정입니다." },
+  { id: "sea-jul-festival", month: 7, name: "해운대 여름 파도 축제", date: "7월 19일 ~ 7월 21일", place: "해운대해수욕장 이벤트광장", type: "축제", description: "여름 바다를 주제로 공연과 체험을 선보이는 가상 축제입니다.", sea: "해운대해수욕장", audience: "활기찬 여름 바다를 좋아하는 여행자", tip: "혼잡을 피하려면 대중교통을 이용하고 자외선 차단제를 준비해 주세요.", directions: "도시철도 2호선 해운대역에서 도보 이동하는 설정입니다." },
+  { id: "sea-jul-show", month: 7, name: "광안대교 달빛 버스킹", date: "7월 27일", place: "민락수변공원 공연 구역(가상)", type: "공연", description: "광안대교 야경을 배경으로 즐기는 가상 소규모 공연입니다.", sea: "광안리해수욕장", audience: "야경과 라이브 음악을 좋아하는 분", tip: "관람석이 한정된 설정이므로 조금 일찍 도착해 주세요.", directions: "도시철도 2호선 광안역에서 해변 방향으로 이동하는 설정입니다." },
+  { id: "sea-aug", month: 8, name: "일광 어린이 바다 탐험", date: "8월 10일", place: "일광해수욕장 체험 구역", type: "체험", description: "안전 교육과 모래 해변 관찰을 함께하는 가상 체험입니다.", sea: "일광해수욕장", audience: "보호자를 동반한 어린이", tip: "젖어도 되는 옷과 여벌 옷을 챙겨 주세요.", directions: "동해선 일광역에서 해수욕장까지 도보 이동하는 설정입니다." },
+  { id: "sea-sep", month: 9, name: "기장 바다 이야기 전시", date: "9월 5일 ~ 9월 29일", place: "기장 해안문화공간(가상)", type: "전시", description: "기장 어촌과 해안의 이야기를 그림과 기록으로 소개하는 가상 전시입니다.", sea: "기장 바다", audience: "지역 문화와 기록에 관심 있는 분", tip: "주변 해안 산책 시간을 함께 계획해 보세요.", directions: "동해선 기장역에서 지역 버스로 환승하는 설정입니다." },
+  { id: "sea-oct", month: 10, name: "다대포 갈대와 바다 축제", date: "10월 12일 ~ 10월 13일", place: "다대포 고우니생태길 일대", type: "축제", description: "가을 생태길과 바다 풍경을 함께 즐기는 가상 축제입니다.", sea: "다대포해수욕장", audience: "가을 산책과 생태 관찰을 좋아하는 분", tip: "편한 신발을 신고 지정된 탐방로를 이용해 주세요.", directions: "도시철도 1호선 다대포해수욕장역에서 도보 이동하는 설정입니다." },
+  { id: "sea-dec", month: 12, name: "청사포 겨울빛 공연", date: "12월 21일", place: "청사포 어울마당(가상)", type: "공연", description: "등대와 겨울 바다를 배경으로 음악을 듣는 가상 공연입니다.", sea: "청사포 바다", audience: "차분한 연말 분위기를 원하는 여행자", tip: "방한용품을 준비하고 해가 지기 전 주변을 둘러보세요.", directions: "해운대에서 청사포 방면 마을버스를 이용하는 설정입니다." }
+];
 
 const sampleSharedCourses = [
   { id: "sample-1", title: "다대포 노을 따라 걷는 하루", author: "노을수집가", beach: "다대포해수욕장", places: ["아미산전망대", "고우니생태길", "다대포해수욕장"], duration: "약 4시간", companion: "친구", mood: "사진 촬영", description: "낙동강과 바다가 만나는 풍경부터 붉은 노을까지 차례로 만나는 코스예요. 해 질 무렵 다대포에 도착하면 멋진 사진을 남길 수 있어 추천해요." },
@@ -60,7 +79,7 @@ menuButtons.forEach((button) => {
     } else if (button.dataset.menu === "여행 코스 공유") {
       showScreen("share-screen");
     } else {
-      statusMessage.textContent = `${button.dataset.menu} 메뉴를 준비하고 있어요!`;
+      openEvents();
     }
   });
 });
@@ -154,3 +173,60 @@ courseForm.addEventListener("submit", (event) => {
 });
 
 getSharedCourses();
+
+function renderEvents() {
+  const month = Number(eventMonth.value);
+  const items = sampleSeaEvents.filter((event) => event.month === month && (selectedEventType === "전체" || event.type === selectedEventType));
+  eventList.innerHTML = items.length ? items.map((event) => `
+    <button class="event-card" type="button" data-event-id="${event.id}">
+      <span class="event-card__heading"><span class="tag">${event.type}</span><span aria-hidden="true">→</span></span>
+      <h2>${event.name}</h2>
+      <span class="event-card__meta"><span>📅 ${event.date}</span><span>📍 ${event.place}</span><span>🌊 ${event.sea}</span></span>
+      <p class="event-card__description">${event.description}</p>
+    </button>`).join("") : '<p class="event-empty">이달에는 등록된 행사가 없습니다</p>';
+}
+
+function openEvents() {
+  eventMonth.value = String(new Date().getMonth() + 1);
+  selectedEventType = "전체";
+  document.querySelectorAll("[data-event-type]").forEach((button) => {
+    const active = button.dataset.eventType === "전체";
+    button.classList.toggle("is-active", active);
+    button.setAttribute("aria-pressed", String(active));
+  });
+  renderEvents();
+  showScreen("event-screen");
+}
+
+function openEventDetail(id) {
+  const event = sampleSeaEvents.find((item) => item.id === id);
+  if (!event) return;
+  eventDetail.innerHTML = `
+    <p class="result-intro">SAMPLE SEA EVENT · ${event.type}</p>
+    <h1 id="event-detail-title" class="event-detail-title">${event.name}</h1>
+    <p class="event-detail-summary">${event.description}</p>
+    <div class="event-detail-grid"><p><strong>날짜</strong> ${event.date}</p><p><strong>장소</strong> ${event.place}</p><p><strong>바다</strong> ${event.sea}</p></div>
+    <section class="detail-section"><h2>👥 추천 대상</h2><p>${event.audience}</p></section>
+    <section class="detail-section"><h2>💡 이용 팁</h2><p>${event.tip}</p></section>
+    <section class="detail-section"><h2>🚌 찾아가는 방법</h2><p>${event.directions}</p></section>`;
+  showScreen("event-detail-screen");
+}
+
+eventMonth.addEventListener("change", renderEvents);
+document.querySelector("#event-filters").addEventListener("click", (event) => {
+  const button = event.target.closest("[data-event-type]");
+  if (!button) return;
+  selectedEventType = button.dataset.eventType;
+  document.querySelectorAll("[data-event-type]").forEach((item) => {
+    const active = item === button;
+    item.classList.toggle("is-active", active);
+    item.setAttribute("aria-pressed", String(active));
+  });
+  renderEvents();
+});
+eventList.addEventListener("click", (event) => {
+  const card = event.target.closest("[data-event-id]");
+  if (card) openEventDetail(card.dataset.eventId);
+});
+document.querySelector("[data-back-events]").addEventListener("click", () => showScreen("event-screen"));
+document.querySelectorAll("[data-event-home]").forEach((button) => button.addEventListener("click", () => showScreen("home-screen")));
