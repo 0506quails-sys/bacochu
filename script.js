@@ -80,8 +80,8 @@ function getCourseLikes() {
 function getCourseLike(courseId) {
   const saved = getCourseLikes()[String(courseId)];
   const liked = saved?.liked === true;
-  const count = Math.max(0, Number.isFinite(saved?.count) ? Math.floor(saved.count) : (liked ? 1 : 0));
-  return { liked, count };
+  // 한 브라우저에서 한 번만 누를 수 있으므로 손상되거나 이전 형식인 개수도 0 또는 1로 정규화합니다.
+  return { liked, count: liked ? 1 : 0 };
 }
 
 function toggleCourseLike(courseId) {
@@ -89,7 +89,7 @@ function toggleCourseLike(courseId) {
   const likes = getCourseLikes();
   const current = getCourseLike(id);
   const liked = !current.liked;
-  likes[id] = { liked, count: Math.max(0, current.count + (liked ? 1 : -1)) };
+  likes[id] = { liked, count: liked ? 1 : 0 };
   localStorage.setItem(LIKES_STORAGE_KEY, JSON.stringify(likes));
 }
 
@@ -267,8 +267,10 @@ sharedCourseList.addEventListener("click", (event) => {
     renderSharedCourses();
     return;
   }
-  const card = event.target.closest("[data-course-id]");
-  if (card) openCourseDetail(card.dataset.courseId);
+  const openButton = event.target.closest("[data-course-id]");
+  const card = event.target.closest("[data-course-card]");
+  const courseId = openButton?.dataset.courseId || card?.dataset.courseCard;
+  if (courseId) openCourseDetail(courseId);
 });
 
 window.addEventListener("storage", (event) => {
