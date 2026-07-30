@@ -372,6 +372,36 @@ h2 {
 .delete-message { min-height: 20px; margin: 9px 0 0; color: #c84a38; text-align: center; font-size: .78rem; }
 .list-notice { margin: -8px 0 16px; padding: 11px 14px; color: var(--blue); text-align: center; background: var(--sky); border-radius: 13px; font-size: .8rem; font-weight: 700; }
 
+.comments { margin-top: 28px; padding-top: 24px; border-top: 2px solid rgba(20,125,146,.12); }
+.comments__heading { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.comments__heading h2 { font-size: 1.2rem; }
+.comments__heading strong { color: var(--blue); font-size: .82rem; }
+.comments__local-guide { margin: 8px 0 18px; color: var(--muted); font-size: .72rem; line-height: 1.55; }
+.comment-form { display: grid; gap: 8px; padding: 17px; background: var(--white); border: 1px solid rgba(20,125,146,.1); border-radius: 18px; box-shadow: 0 6px 16px rgba(6,59,77,.06); }
+.comment-form label { margin-top: 4px; font-size: .82rem; font-weight: 800; }
+.comment-field { position: relative; }
+.comment-field input, .comment-field textarea { width: 100%; padding: 12px 13px 28px; color: var(--navy); background: #fbfefd; border: 1px solid rgba(20,125,146,.22); border-radius: 12px; font: inherit; font-size: .82rem; }
+.comment-field textarea { min-height: 105px; resize: vertical; }
+.character-count { position: absolute; right: 10px; bottom: 8px; color: var(--muted); font-size: .68rem; }
+.comment-shortcut { color: var(--muted); font-size: .68rem; line-height: 1.5; }
+.comment-message { min-height: 20px; margin: 1px 0; color: #9f382b; font-size: .76rem; line-height: 1.5; }
+.comment-submit { width: 100%; min-height: 45px; padding: 11px 16px; color: var(--white); background: var(--coral); border: 0; border-radius: 13px; cursor: pointer; font-weight: 800; }
+.comment-list { display: grid; gap: 11px; margin-top: 17px; }
+.comment-card { min-width: 0; padding: 15px; background: var(--white); border: 1px solid rgba(20,125,146,.1); border-radius: 16px; box-shadow: 0 5px 14px rgba(6,59,77,.05); }
+.comment-card__header { display: flex; align-items: start; justify-content: space-between; gap: 10px; }
+.comment-card__header > div { display: grid; min-width: 0; gap: 3px; }
+.comment-card strong { overflow-wrap: anywhere; font-size: .83rem; }
+.comment-card time { color: var(--muted); font-size: .66rem; }
+.comment-card p { margin: 12px 0 0; color: #50686e; font-size: .81rem; line-height: 1.7; white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; }
+.comment-delete { flex: none; min-width: 44px; min-height: 36px; padding: 7px 9px; color: #a23b2d; background: #fff2ee; border: 1px solid rgba(200,74,56,.25); border-radius: 10px; cursor: pointer; font-size: .72rem; font-weight: 800; }
+.comment-empty { margin: 0; padding: 27px 14px; color: var(--muted); text-align: center; background: var(--white); border-radius: 16px; font-size: .78rem; line-height: 1.6; }
+.comment-field input:focus-visible, .comment-field textarea:focus-visible, .comment-submit:focus-visible, .comment-delete:focus-visible { outline: 3px solid var(--coral); outline-offset: 2px; }
+
+@media (max-width: 359px) {
+  .comment-form { padding: 14px; }
+  .comments__heading { align-items: center; }
+}
+
 .event-controls { margin-bottom: 20px; }
 .month-select { display: grid; gap: 8px; margin-bottom: 15px; font-size: .84rem; font-weight: 800; }
 .month-select select { width: 100%; padding: 13px 42px 13px 14px; color: var(--navy); background: var(--white); border: 1px solid rgba(20,125,146,.2); border-radius: 14px; font: inherit; font-weight: 700; }
