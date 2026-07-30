@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="취향에 맞는 부산 바다 코스를 추천하는 바코추입니다."
+    />
+    <title>바코추 | 부산 바다 코스 추천</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="hero" aria-labelledby="app-title">
+        <div class="hero__decoration hero__decoration--sun" aria-hidden="true"></div>
+        <div class="hero__decoration hero__decoration--wave" aria-hidden="true"></div>
+
+        <header class="brand">
+          <span class="brand__mark" aria-hidden="true">🌊</span>
+          <span class="brand__name">바코추</span>
+        </header>
+
+        <div class="hero__content">
+          <p class="hero__eyebrow">BUSAN SEA COURSE</p>
+          <h1 id="app-title">바코추</h1>
+          <p class="hero__description">부산 바다 코스 추천</p>
+          <p class="hero__message">
+            오늘의 기분에 꼭 맞는<br />부산 바다 여행을 시작해 보세요.
+          </p>
+        </div>
+      </section>
+
+      <section class="menu" aria-labelledby="menu-title">
+        <div class="menu__heading">
+          <div>
+            <p class="menu__eyebrow">어디로 떠나볼까요?</p>
+            <h2 id="menu-title">바다를 즐기는 방법</h2>
+          </div>
+          <span class="menu__weather" aria-label="맑은 날씨">☀️ 24°</span>
+        </div>
+
+        <div class="menu__actions">
+          <button class="action-card action-card--primary" type="button" data-menu="맞춤 코스 찾기">
+            <span class="action-card__icon" aria-hidden="true">🧭</span>
+            <span class="action-card__text">
+              <strong>맞춤 코스 찾기</strong>
+              <small>내 취향에 꼭 맞는 여행 코스</small>
+            </span>
+            <span class="action-card__arrow" aria-hidden="true">→</span>
+          </button>
+
+          <button class="action-card" type="button" data-menu="숨은 명소 보기">
+            <span class="action-card__icon" aria-hidden="true">📍</span>
+            <span class="action-card__text">
+              <strong>숨은 명소 보기</strong>
+              <small>현지인만 아는 특별한 장소</small>
+            </span>
+            <span class="action-card__arrow" aria-hidden="true">→</span>
+          </button>
+
+          <button class="action-card" type="button" data-menu="월별 이벤트">
+            <span class="action-card__icon" aria-hidden="true">🗓️</span>
+            <span class="action-card__text">
+              <strong>월별 이벤트</strong>
+              <small>이달의 축제와 즐길 거리</small>
+            </span>
+            <span class="action-card__arrow" aria-hidden="true">→</span>
+          </button>
+        </div>
+
+        <p id="status-message" class="status-message" role="status" aria-live="polite"></p>
+      </section>
+    </main>
+
+    <script src="script.js"></script>
+  </body>
+</html>
