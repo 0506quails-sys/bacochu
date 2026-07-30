@@ -34,6 +34,22 @@ const sampleSharedCourses = [
   { id: "sample-2", title: "영도 바다 쉼표 코스", author: "부산갈매기", beach: "영도 바다", places: ["흰여울문화마을", "절영해안산책로", "태종대"], duration: "약 5시간", companion: "가족", mood: "휴식", description: "골목과 해안 산책로를 천천히 걸으며 부산다운 바다를 즐겨요. 볼거리와 쉬어 갈 곳이 많아 가족과 여유롭게 다녀오기 좋아요." }
 ];
 
+const sampleSharedCourseIds = new Set(sampleSharedCourses.map((course) => String(course.id)));
+
+function getCourseManagementCredentials(course) {
+  // 이전 버전에서 사용했을 수 있는 속성명도 읽되, 새 데이터는 아래의 표준 속성명으로만 저장합니다.
+  const passwordHash = course.passwordHash || course.adminPasswordHash;
+  const passwordSalt = course.passwordSalt || course.adminPasswordSalt;
+  return passwordHash && passwordSalt ? { passwordHash, passwordSalt } : null;
+}
+
+function isUserCreatedCourse(course) {
+  if (!course || sampleSharedCourseIds.has(String(course.id))) return false;
+
+  // 구분값이 없던 기존 코스도 관리 비밀번호 해시가 있다면 사용자가 등록한 코스로 복구합니다.
+  return course.isUserCreated === true || Boolean(getCourseManagementCredentials(course));
+}
+
 function getSharedCourses() {
   try {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
@@ -138,35 +154,37 @@ function renderSharedCourses() {
 }
 
 function openCourseDetail(id) {
-  const course = getSharedCourses().find((item) => item.id === id);
+  const course = getSharedCourses().find((item) => String(item.id) === String(id));
   if (!course) return;
-  selectedSharedCourseId = course.id;
+  selectedSharedCourseId = String(course.id);
+  const canDeleteCourse = isUserCreatedCourse(course) && Boolean(getCourseManagementCredentials(course));
   sharedCourseDetail.innerHTML = `
     <p class="result-intro">TRAVELER'S COURSE</p><h1 id="detail-title" class="course-name">${escapeHtml(course.title)}</h1>
     <p class="detail-meta">✍️ ${escapeHtml(course.author)} · ⏱ ${escapeHtml(course.duration)}</p>
     <div class="detail-tags"><span class="tag">🌊 ${escapeHtml(course.beach)}</span><span class="tag">👥 ${escapeHtml(course.companion)}</span><span class="tag">✨ ${escapeHtml(course.mood)}</span></div>
     <section class="detail-section"><h2>📍 방문 장소 3곳</h2><ol class="detail-places">${course.places.map((place) => `<li>${escapeHtml(place)}</li>`).join("")}</ol></section>
     <section class="detail-section"><h2>💡 코스 소개와 추천 이유</h2><p>${escapeHtml(course.description)}</p></section>
-    ${course.passwordHash && course.passwordSalt ? '<button class="delete-course-button" type="button" data-delete-course>코스 삭제</button><p class="delete-message" role="alert" aria-live="assertive"></p>' : ""}`;
+    ${canDeleteCourse ? '<div class="course-management"><button class="delete-course-button" type="button" data-delete-course>코스 삭제</button><p class="delete-message" role="alert" aria-live="assertive"></p></div>' : ""}`;
   showScreen("course-detail-screen");
 }
 
 sharedCourseDetail.addEventListener("click", async (event) => {
   if (!event.target.closest("[data-delete-course]")) return;
   const courses = getSharedCourses();
-  const course = courses.find((item) => item.id === selectedSharedCourseId && item.passwordHash && item.passwordSalt);
-  if (!course) return;
+  const course = courses.find((item) => String(item.id) === selectedSharedCourseId && isUserCreatedCourse(item));
+  const credentials = getCourseManagementCredentials(course || {});
+  if (!course || !credentials) return;
 
   const password = window.prompt("관리 비밀번호를 입력해 주세요.");
   if (password === null) return;
-  const passwordHash = await hashPassword(password, course.passwordSalt);
-  if (passwordHash !== course.passwordHash) {
+  const passwordHash = await hashPassword(password, credentials.passwordSalt);
+  if (passwordHash !== credentials.passwordHash) {
     sharedCourseDetail.querySelector(".delete-message").textContent = "관리 비밀번호가 일치하지 않습니다";
     return;
   }
   if (!window.confirm("정말 이 코스를 삭제하시겠습니까?")) return;
 
-  saveSharedCourses(courses.filter((item) => item.id !== course.id));
+  saveSharedCourses(courses.filter((item) => String(item.id) !== String(course.id)));
   renderSharedCourses();
   showScreen("course-list-screen");
   showListNotice("코스가 삭제되었습니다");
@@ -207,6 +225,7 @@ courseForm.addEventListener("submit", async (event) => {
   const passwordSalt = createPasswordSalt();
   const course = {
     id: `course-${Date.now()}`,
+    isUserCreated: true,
     title: values.get("title").trim(), author: values.get("author").trim(), beach: values.get("beach"),
     places: [values.get("place1").trim(), values.get("place2").trim(), values.get("place3").trim()],
     duration: values.get("duration").trim(), companion: values.get("companion"), mood: values.get("mood"), description: values.get("description").trim(),
