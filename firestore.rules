@@ -2,6 +2,25 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+    match /courses/{courseId} {
+      allow read: if true;
+      allow create: if request.auth != null
+                    && request.resource.data.ownerUid == request.auth.uid
+                    && request.resource.data.createdAt == request.time;
+      allow update: if request.auth != null
+                    && resource.data.ownerUid == request.auth.uid
+                    && request.resource.data.ownerUid == resource.data.ownerUid;
+      allow delete: if request.auth != null && resource.data.ownerUid == request.auth.uid;
+
+      match /comments/{commentId} {
+        allow read: if true;
+        allow create: if request.auth != null
+                      && request.resource.data.ownerUid == request.auth.uid
+                      && request.resource.data.createdAt == request.time;
+        allow update, delete: if request.auth != null && resource.data.ownerUid == request.auth.uid;
+      }
+    }
+
     // collectionGroup(db, "likes")는 모든 코스 아래의 likes 문서를 조회한다.
     // rules_version 2의 재귀 와일드카드를 사용해야 컬렉션 그룹 쿼리와 일치한다.
     match /{documentPath=**}/likes/{uid} {

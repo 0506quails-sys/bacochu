@@ -222,9 +222,26 @@ function applyFirestoreSnapshot({ courses = [], commentsByCourse = {}, likeUidsB
   if (selectedSharedCourseId && !document.querySelector("#course-detail-screen").hidden) openCourseDetail(selectedSharedCourseId);
 }
 
+function setFirestoreUser(userId) {
+  firestoreUserId = userId == null ? null : String(userId);
+  renderSharedCourses();
+}
+
+function applyFirestoreCourses(courses) {
+  firestoreCourses = Array.isArray(courses) ? courses.filter((course) => course && course.id != null) : [];
+  renderSharedCourses();
+  if (selectedSharedCourseId && !document.querySelector("#course-detail-screen").hidden) openCourseDetail(selectedSharedCourseId);
+}
+
 // Firestore 연결 코드는 스냅샷 결과를 이 함수로 전달합니다. 이 경계 덕분에
 // 서버 동기화가 localStorage를 삭제하거나 기존 데이터를 자동 업로드하지 않습니다.
-window.bacochuFirestore = Object.freeze({ applySnapshot: applyFirestoreSnapshot });
+window.bacochuFirestore = {
+  applySnapshot: applyFirestoreSnapshot,
+  applyCourses: applyFirestoreCourses,
+  setUser: setFirestoreUser,
+  createCourse: null,
+  deleteCourse: null
+};
 
 function createLocalId(prefix) {
   if (crypto.randomUUID) return `${prefix}-${crypto.randomUUID()}`;
@@ -417,7 +434,8 @@ function openCourseDetail(id) {
   const course = getSharedCourses().find((item) => String(item.id) === String(id));
   if (!course) return;
   selectedSharedCourseId = String(course.id);
-  const canDeleteCourse = isUserCreatedCourse(course) && Boolean(getCourseManagementCredentials(course));
+  const canDeleteCourse = (course.source === "firestore" && course.ownerUid === firestoreUserId)
+    || (isUserCreatedCourse(course) && Boolean(getCourseManagementCredentials(course)));
   const places = normalizePlaces(course);
   sharedCourseDetail.innerHTML = `
     <p class="result-intro">TRAVELER'S COURSE</p><h1 id="detail-title" class="course-name">${escapeHtml(course.title)}</h1>
@@ -528,6 +546,23 @@ sharedCourseDetail.addEventListener("click", async (event) => {
     return;
   }
   if (!event.target.closest("[data-delete-course]")) return;
+  const remoteCourse = firestoreCourses.find((item) => String(item.id) === selectedSharedCourseId);
+  if (remoteCourse) {
+    if (remoteCourse.ownerUid !== firestoreUserId || typeof window.bacochuFirestore.deleteCourse !== "function") {
+      sharedCourseDetail.querySelector(".delete-message").textContent = "본인이 작성한 게시물만 삭제할 수 있습니다.";
+      return;
+    }
+    if (!window.confirm("정말 이 코스를 삭제하시겠습니까?")) return;
+    try {
+      await window.bacochuFirestore.deleteCourse(remoteCourse.id);
+      showScreen("course-list-screen");
+      showListNotice("코스가 삭제되었습니다");
+    } catch (error) {
+      console.error("Firestore 코스를 삭제하지 못했습니다.", error);
+      sharedCourseDetail.querySelector(".delete-message").textContent = "코스를 삭제하지 못했습니다. 잠시 후 다시 시도해 주세요.";
+    }
+    return;
+  }
   // 관리 비밀번호는 예전 localStorage 코스에만 적용합니다. Firestore 코스는
   // 반드시 서버 인증/보안 규칙으로 관리하며 이 경로에서 삭제하지 않습니다.
   const courses = getLocalSharedCourses();
@@ -679,25 +714,30 @@ courseForm.addEventListener("submit", async (event) => {
     return;
   }
   const values = new FormData(courseForm);
-  const password = values.get("adminPassword");
-  const passwordSalt = createPasswordSalt();
   const places = getDraftPlaces().map((place) => ({ name: place.name.trim(), description: place.description.trim(), address: place.address.trim() }));
   const course = {
-    id: `course-${Date.now()}`,
     isUserCreated: true,
     title: values.get("title").trim(), author: values.get("author").trim(), beach: values.get("beach"),
     places,
-    duration: values.get("duration").trim(), companion: values.get("companion"), mood: values.get("mood"), description: values.get("description").trim(),
-    passwordSalt,
-    // localStorage 기반 해시는 원문 저장을 피하기 위한 임시 구조이며 실제 서버 보안을 대신하지 않습니다.
-    passwordHash: await hashPassword(password, passwordSalt)
+    duration: values.get("duration").trim(), companion: values.get("companion"), mood: values.get("mood"), description: values.get("description").trim()
   };
   const emptyPlaceIndex = places.findIndex((place) => !place.name || !place.description || !place.address);
   if ([course.title, course.author, course.duration, course.description].some((value) => !value) || emptyPlaceIndex >= 0) {
     courseFormMessage.textContent = emptyPlaceIndex >= 0 ? `${emptyPlaceIndex + 1}번째 장소의 모든 항목을 공백 없이 작성해 주세요.` : "공백만 입력할 수 없어요. 모든 항목을 내용으로 채워 주세요.";
     return;
   }
-  saveSharedCourses([course, ...getLocalSharedCourses()]);
+  if (!firestoreUserId || typeof window.bacochuFirestore.createCourse !== "function") {
+    courseFormMessage.textContent = "익명 로그인 중입니다. 잠시 후 다시 등록해 주세요.";
+    return;
+  }
+  try {
+    // 실제 저장은 firebase-client.js의 createFirestoreCourse()에서 addDoc으로 수행합니다.
+    await window.bacochuFirestore.createCourse(course);
+  } catch (error) {
+    console.error("Firestore 코스를 등록하지 못했습니다.", error);
+    courseFormMessage.textContent = "코스를 등록하지 못했습니다. 네트워크 연결을 확인해 주세요.";
+    return;
+  }
   courseForm.reset();
   setPlaceCount(1, { confirmRemoval: false });
   courseFormMessage.textContent = "";
