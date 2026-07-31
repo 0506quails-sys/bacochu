@@ -32,12 +32,12 @@ let firestoreCommentsByCourse = new Map();
 let firestoreLikeUidsByCourse = new Map();
 let firestoreUserId = null;
 
-const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
-const festivalDataIsValid = Array.isArray(window.BACOCHU_FESTIVALS) && window.BACOCHU_FESTIVALS.every((item) =>
-  item && item.id && item.name && item.place && item.sourceUrl && DATE_PATTERN.test(item.startDate) &&
-  DATE_PATTERN.test(item.endDate) && item.startDate <= item.endDate
-);
-const officialFestivals = festivalDataIsValid ? window.BACOCHU_FESTIVALS : null;
+const { normalizeFestival, filterFestivals } = window.BacochuFestivalUtils;
+const EVENT_DATA_URL = new URL("festivals.json", document.baseURI).href;
+const EVENT_CATEGORY_LABELS = Object.freeze({ festival: "축제", performance: "공연", exhibition: "전시", experience: "체험" });
+let officialFestivals = null;
+let festivalLoadState = "idle";
+let festivalLoadPromise = null;
 
 const sampleSharedCourses = [
   { id: "sample-1", title: "다대포 노을 따라 걷는 하루", author: "노을수집가", beach: "다대포해수욕장", places: ["아미산전망대", "고우니생태길", "다대포해수욕장"], duration: "약 4시간", companion: "친구", mood: "사진 촬영", description: "낙동강과 바다가 만나는 풍경부터 붉은 노을까지 차례로 만나는 코스예요. 해 질 무렵 다대포에 도착하면 멋진 사진을 남길 수 있어 추천해요." },
@@ -766,81 +766,118 @@ setPlaceCount(1, { confirmRemoval: false });
 getSharedCourses();
 
 function eventStatus(item) {
-  const today = new Date();
-  const localToday = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
-  if (item.endDate < localToday) return t("종료");
-  if (item.startDate > localToday) return t("예정");
+  const parts = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date());
+  const value = Object.fromEntries(parts.map(({ type, value }) => [type, value]));
+  const today = `${value.year}-${value.month}-${value.day}`;
+  if (item.endDate < today) return t("종료");
+  if (item.startDate > today) return t("예정");
   return t("진행 중");
 }
 
 function formatFestivalDate(item) {
   const formatter = new Intl.DateTimeFormat(currentLocale(), { year: "numeric", month: "long", day: "numeric", timeZone: "Asia/Seoul" });
-  const start = formatter.format(new Date(`${item.startDate}T00:00:00+09:00`));
-  const end = formatter.format(new Date(`${item.endDate}T00:00:00+09:00`));
-  return item.startDate === item.endDate ? start : `${start} ~ ${end}`;
+  const format = (date) => formatter.format(new Date(`${date}T00:00:00+09:00`));
+  return item.startDate === item.endDate ? format(item.startDate) : `${format(item.startDate)} ~ ${format(item.endDate)}`;
 }
 
-function festivalOverlapsMonth(item, year, month) {
-  const rangeStart = year * 10000 + month * 100 + 1;
-  const rangeEnd = year * 10000 + month * 100 + new Date(Date.UTC(year, month, 0)).getUTCDate();
-  const start = Number(item.startDate.replaceAll("-", ""));
-  const end = Number(item.endDate.replaceAll("-", ""));
-  return start <= rangeEnd && end >= rangeStart;
+function showEventMessage(key, { error = false, retry = false } = {}) {
+  eventList.replaceChildren();
+  const message = document.createElement("p");
+  message.className = `event-empty${error ? " event-error" : ""}`;
+  message.textContent = t(key);
+  eventList.append(message);
+  if (retry) {
+    const button = document.createElement("button");
+    button.className = "event-retry-button";
+    button.type = "button";
+    button.textContent = t("다시 시도");
+    button.addEventListener("click", () => loadFestivals({ force: true }));
+    eventList.append(button);
+  }
+}
+
+function populateEventYears() {
+  const years = [...new Set((officialFestivals || []).flatMap((item) => [item.startDate.slice(0, 4), item.endDate.slice(0, 4)]))].sort((a, b) => b.localeCompare(a));
+  eventYear.replaceChildren(...years.map((year) => Object.assign(document.createElement("option"), { value: year, textContent: year })));
+}
+
+async function loadFestivals({ force = false } = {}) {
+  if (!force && festivalLoadState === "loaded") return officialFestivals;
+  if (!force && festivalLoadPromise) return festivalLoadPromise;
+  festivalLoadState = "loading";
+  showEventMessage("행사 정보를 불러오는 중입니다.");
+  festivalLoadPromise = (async () => {
+    try {
+      const response = await fetch(EVENT_DATA_URL, { cache: "no-cache" });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const rawItems = await response.json();
+      if (!Array.isArray(rawItems)) throw new TypeError("festival data is not an array");
+      const validItems = [];
+      rawItems.forEach((item, index) => {
+        const normalized = normalizeFestival(item);
+        if (normalized) validItems.push(normalized);
+        else console.warn(`[월별 바다 행사] 잘못된 행사 데이터 제외 (index ${index})`, item);
+      });
+      officialFestivals = Object.freeze(validItems);
+      festivalLoadState = "loaded";
+      console.info(`[월별 바다 행사] 전체 ${rawItems.length}개, 유효 ${validItems.length}개`);
+      populateEventYears();
+      if (!eventYear.value && validItems.length) {
+        eventYear.value = validItems[0].startDate.slice(0, 4);
+        eventMonth.value = String(Number(validItems[0].startDate.slice(5, 7)));
+      }
+      renderEvents();
+      return officialFestivals;
+    } catch (error) {
+      officialFestivals = null;
+      festivalLoadState = "error";
+      console.error("[월별 바다 행사] 행사 데이터 로딩 실패", error);
+      showEventMessage("행사 정보를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.", { error: true, retry: true });
+      return null;
+    } finally {
+      festivalLoadPromise = null;
+    }
+  })();
+  return festivalLoadPromise;
 }
 
 function renderEvents() {
-  if (!officialFestivals) {
-    eventList.replaceChildren();
-    const error = document.createElement("p");
-    error.className = "event-empty event-error";
-    error.textContent = t("행사 정보를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.");
-    eventList.append(error);
+  if (festivalLoadState === "idle" || festivalLoadState === "loading") {
+    showEventMessage("행사 정보를 불러오는 중입니다.");
     return;
   }
-  const year = Number(eventYear.value);
-  const month = Number(eventMonth.value);
-  // 날짜를 UTC/로컬 Date로 섞어 비교하지 않고 달력 날짜 정수로 통일합니다.
-  // 따라서 월 앞의 0 유무나 실행 환경의 시간대와 무관하게 기간 겹침을 판정합니다.
-  const items = officialFestivals.filter((item) => {
-    return festivalOverlapsMonth(item, year, month) && (selectedEventType === "전체" || item.type === selectedEventType);
-  });
+  if (festivalLoadState === "error" || !officialFestivals) {
+    showEventMessage("행사 정보를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.", { error: true, retry: true });
+    return;
+  }
+  const items = filterFestivals(officialFestivals, eventYear.value, eventMonth.value, selectedEventType);
+  console.info(`[월별 바다 행사] 필터 전 ${officialFestivals.length}개, 필터 후 ${items.length}개`, { year: eventYear.value, month: eventMonth.value, categoryId: selectedEventType });
   eventList.replaceChildren();
   if (!items.length) {
-    const empty = document.createElement("p"); empty.className = "event-empty"; empty.textContent = t("현재 공식 자료에서 확인된 행사가 없습니다."); eventList.append(empty); return;
+    showEventMessage("현재 공식 자료에서 확인된 행사가 없습니다.");
+    return;
   }
   items.forEach((item) => {
     const card = document.createElement("button"); card.className = "event-card"; card.type = "button"; card.dataset.eventId = item.id;
     const heading = document.createElement("span"); heading.className = "event-card__heading";
-    const tag = document.createElement("span"); tag.className = "tag"; tag.textContent = `${t(item.type)} · ${eventStatus(item)}`;
+    const tag = document.createElement("span"); tag.className = "tag"; tag.textContent = `${t(EVENT_CATEGORY_LABELS[item.categoryId])} · ${eventStatus(item)}`;
     const arrow = document.createElement("span"); arrow.ariaHidden = "true"; arrow.textContent = "→"; heading.append(tag, arrow);
     const title = document.createElement("h2"); title.textContent = item.name;
     const meta = document.createElement("span"); meta.className = "event-card__meta";
-    [ `📅 ${formatFestivalDate(item)}`, `📍 ${item.place}`, `🌊 ${item.sea}` ].forEach((value) => { const row = document.createElement("span"); row.textContent = value; meta.append(row); });
+    [`📅 ${formatFestivalDate(item)}`, `📍 ${item.place}`, `🌊 ${item.sea}`].forEach((value) => { const row = document.createElement("span"); row.textContent = value; meta.append(row); });
     const description = document.createElement("p"); description.className = "event-card__description"; description.textContent = item.description;
     card.append(heading, title, meta, description); eventList.append(card);
   });
 }
 
-function populateEventYears() {
-  if (!officialFestivals) {
-    const current = String(new Date().getFullYear());
-    eventYear.replaceChildren(Object.assign(document.createElement("option"), { value: current, textContent: current }));
-    return;
-  }
-  const years = [...new Set(officialFestivals.flatMap((item) => [Number(item.startDate.slice(0, 4)), Number(item.endDate.slice(0, 4))]))].sort((a, b) => b - a);
-  const current = new Date().getFullYear(); if (!years.includes(current)) years.unshift(current);
-  eventYear.replaceChildren(...years.map((year) => { const option = document.createElement("option"); option.value = String(year); option.textContent = String(year); return option; }));
-}
-
-function prepareEvents({ resetFilters = true } = {}) {
+async function prepareEvents({ resetFilters = true } = {}) {
   if (resetFilters) {
-    const now = new Date(); eventYear.value = String(now.getFullYear()); eventMonth.value = String(now.getMonth() + 1);
-    selectedEventType = "전체";
-    document.querySelectorAll("[data-event-type]").forEach((button) => { const active = button.dataset.eventType === "전체"; button.classList.toggle("is-active", active); button.setAttribute("aria-pressed", String(active)); });
+    selectedEventType = "all";
+    document.querySelectorAll("[data-event-type]").forEach((button) => { const active = button.dataset.eventType === "all"; button.classList.toggle("is-active", active); button.setAttribute("aria-pressed", String(active)); });
   }
-  renderEvents();
+  await loadFestivals();
 }
-function openEvents() { prepareEvents(); showScreen("event-screen"); }
+function openEvents() { showScreen("event-screen"); prepareEvents(); }
 
 function openEventDetail(id) {
   if (!officialFestivals) return;
@@ -851,7 +888,7 @@ function openEventDetail(id) {
   const title = document.createElement("h1"); title.id = "event-detail-title"; title.className = "event-detail-title"; title.textContent = item.name;
   const summary = document.createElement("p"); summary.className = "event-detail-summary"; summary.textContent = item.description;
   const grid = document.createElement("div"); grid.className = "event-detail-grid";
-  [["날짜", formatFestivalDate(item)], ["장소", item.place], ["바다", item.sea], ["자료 확인일", item.verifiedAt]].forEach(([label, value]) => { const row = document.createElement("p"); const strong = document.createElement("strong"); strong.textContent = t(label); row.append(strong, ` ${value}`); grid.append(row); });
+  [["날짜", formatFestivalDate(item)], ["장소", item.place], ["바다", item.sea], ["공식 출처", item.sourceName], ["자료 확인일", item.verifiedAt]].forEach(([label, value]) => { const row = document.createElement("p"); const strong = document.createElement("strong"); strong.textContent = t(label); row.append(strong, ` ${value}`); grid.append(row); });
   const source = document.createElement("a"); source.className = "event-source"; source.href = item.sourceUrl; source.target = "_blank"; source.rel = "noopener noreferrer"; source.textContent = t("공식 정보 확인");
   const notice = document.createElement("p"); notice.className = "event-notice"; notice.textContent = t("행사 일정은 변경될 수 있으므로 방문 전 공식 홈페이지를 확인해 주세요.");
   eventDetail.append(marker, intro, title, summary, grid, source, notice); showScreen("event-detail-screen");
@@ -866,7 +903,6 @@ document.querySelector("#event-filters").addEventListener("click", (event) => {
 eventList.addEventListener("click", (event) => { const card = event.target.closest("[data-event-id]"); if (card) openEventDetail(card.dataset.eventId); });
 document.querySelector("[data-back-events]").addEventListener("click", () => showScreen("event-screen"));
 document.querySelectorAll("[data-event-home]").forEach((button) => button.addEventListener("click", () => showScreen("home-screen")));
-populateEventYears();
 
 const BEACHES = Object.freeze([
   { id: "gwangalli", nameKey: "광안리해수욕장", shortKey: "광안리", latitude: 35.153169, longitude: 129.118666 },
