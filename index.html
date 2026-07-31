@@ -8,7 +8,7 @@
       content="취향에 맞는 부산 바다 코스를 추천하는 바코추입니다."
     />
     <title>바코추 | 부산 바다 코스 추천</title>
-    <link rel="stylesheet" href="style.css?v=20260731-1" />
+    <link rel="stylesheet" href="style.css?v=20260731-2" />
   </head>
   <body>
     <div class="language-picker">
@@ -231,11 +231,11 @@
             </select>
           </label>
           <div id="event-filters" class="event-filters" aria-label="행사 종류 필터">
-            <button class="event-filter is-active" type="button" data-event-type="전체" aria-pressed="true">전체</button>
-            <button class="event-filter" type="button" data-event-type="축제" aria-pressed="false">축제</button>
-            <button class="event-filter" type="button" data-event-type="공연" aria-pressed="false">공연</button>
-            <button class="event-filter" type="button" data-event-type="전시" aria-pressed="false">전시</button>
-            <button class="event-filter" type="button" data-event-type="체험" aria-pressed="false">체험</button>
+            <button class="event-filter is-active" type="button" data-event-type="all" aria-pressed="true">전체</button>
+            <button class="event-filter" type="button" data-event-type="festival" aria-pressed="false">축제</button>
+            <button class="event-filter" type="button" data-event-type="performance" aria-pressed="false">공연</button>
+            <button class="event-filter" type="button" data-event-type="exhibition" aria-pressed="false">전시</button>
+            <button class="event-filter" type="button" data-event-type="experience" aria-pressed="false">체험</button>
           </div>
         </div>
         <div id="event-list" class="event-list" aria-live="polite"><p class="event-empty">행사 정보를 불러오는 중입니다…</p></div>
@@ -276,9 +276,9 @@
       </section>
     </main>
 
-    <script src="i18n.js?v=20260731-1"></script>
-    <script src="festivals.js?v=20260731-1"></script>
-    <script src="script.js?v=20260731-1"></script>
-    <script type="module" src="firebase-client.js?v=20260731-1"></script>
+    <script src="i18n.js?v=20260731-2"></script>
+    <script src="festival-utils.js?v=20260731-2"></script>
+    <script src="script.js?v=20260731-2"></script>
+    <script type="module" src="firebase-client.js?v=20260731-2"></script>
   </body>
 </html>
