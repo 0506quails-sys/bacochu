@@ -40,6 +40,13 @@
   Object.assign(en, {"행사 정보를 불러오는 중입니다.":"Loading event information.","다시 시도":"Try again","공식 출처":"Official source"});
   Object.assign(ja, {"행사 정보를 불러오는 중입니다.":"イベント情報を読み込んでいます。","다시 시도":"再試行","공식 출처":"公式情報源"});
   Object.assign(zh, {"행사 정보를 불러오는 중입니다.":"正在加载活动信息。","다시 시도":"重试","공식 출처":"官方来源"});
+  Object.assign(ko, {"선택한 분류에 해당하는 행사가 없습니다.":"선택한 분류에 해당하는 행사가 없습니다."});
+  Object.assign(en, {"선택한 분류에 해당하는 행사가 없습니다.":"There are no events in the selected category."});
+  Object.assign(ja, {"선택한 분류에 해당하는 행사가 없습니다.":"選択した分類に該当するイベントはありません。"});
+  Object.assign(zh, {"선택한 분류에 해당하는 행사가 없습니다.":"所选分类中没有活动。"});
+  Object.assign(en, {"행사 일정과 프로그램은 기상 및 주최 측 사정에 따라 변경될 수 있으므로 방문 전 공식 안내를 확인해 주세요.":"Schedules and programs may change due to weather or organizer circumstances. Check the official notice before visiting."});
+  Object.assign(ja, {"행사 일정과 프로그램은 기상 및 주최 측 사정에 따라 변경될 수 있으므로 방문 전 공식 안내를 확인해 주세요.":"日程やプログラムは天候や主催者の都合により変更される場合があります。訪問前に公式案内をご確認ください。"});
+  Object.assign(zh, {"행사 일정과 프로그램은 기상 및 주최 측 사정에 따라 변경될 수 있으므로 방문 전 공식 안내를 확인해 주세요.":"日程和节目可能因天气或主办方情况而变更，前往前请查看官方通知。"});
   Object.assign(ko, {"코스를 등록하고 있습니다.":"코스를 등록하고 있습니다.","코스가 등록되었습니다.":"코스가 등록되었습니다.","현재 등록 기능을 사용할 수 없습니다. 잠시 후 다시 시도해 주세요.":"현재 등록 기능을 사용할 수 없습니다. 잠시 후 다시 시도해 주세요.","코스를 등록하지 못했습니다. 잠시 후 다시 시도해 주세요.":"코스를 등록하지 못했습니다. 잠시 후 다시 시도해 주세요."});
   Object.assign(en, {"코스를 등록하고 있습니다.":"Posting your course.","코스가 등록되었습니다.":"Your course has been posted.","현재 등록 기능을 사용할 수 없습니다. 잠시 후 다시 시도해 주세요.":"Posting is currently unavailable. Please try again shortly.","코스를 등록하지 못했습니다. 잠시 후 다시 시도해 주세요.":"The course could not be posted. Please try again later."});
   Object.assign(ja, {"코스를 등록하고 있습니다.":"コースを登録しています。","코스가 등록되었습니다.":"コースを登録しました。","현재 등록 기능을 사용할 수 없습니다. 잠시 후 다시 시도해 주세요.":"現在、登録機能をご利用いただけません。しばらくしてからもう一度お試しください。","코스를 등록하지 못했습니다. 잠시 후 다시 시도해 주세요.":"コースを登録できませんでした。しばらくしてからもう一度お試しください。"});

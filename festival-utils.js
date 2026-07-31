@@ -19,9 +19,21 @@
     if (!item || typeof item !== "object") return null;
     const startDate = normalizeDate(item.startDate);
     const endDate = normalizeDate(item.endDate || item.startDate);
-    if (!item.id || !item.name || !item.place || !item.sourceName || !item.sourceUrl ||
+    const names = item.names || (item.name ? { ko: item.name, en: item.name, ja: item.name, zh: item.name } : null);
+    if (!item.id || !names || !["ko", "en", "ja", "zh"].every((language) => typeof names[language] === "string" && names[language].trim()) || !item.place || !item.sea || !item.description || !item.sourceName || !item.sourceUrl || !item.verifiedAt || !item.scheduleNotice ||
         !startDate || !endDate || startDate > endDate || !CATEGORY_IDS.has(item.categoryId)) return null;
-    return Object.freeze({ ...item, startDate, endDate });
+    return Object.freeze({ ...item, names: Object.freeze(names), startDate, endDate });
+  }
+
+  function extractYears(items) {
+    const years = new Set();
+    items.forEach((item) => {
+      const start = normalizeDate(item?.startDate);
+      const end = normalizeDate(item?.endDate || item?.startDate);
+      if (!start || !end || start > end) return;
+      for (let year = Number(start.slice(0, 4)); year <= Number(end.slice(0, 4)); year += 1) years.add(year);
+    });
+    return [...years].sort((a, b) => b - a);
   }
 
   function monthRange(yearValue, monthValue) {
@@ -42,7 +54,7 @@
       (categoryId === "all" || item.categoryId === categoryId));
   }
 
-  const api = Object.freeze({ normalizeDate, normalizeFestival, monthRange, filterFestivals, CATEGORY_IDS });
+  const api = Object.freeze({ normalizeDate, normalizeFestival, extractYears, monthRange, filterFestivals, CATEGORY_IDS });
   if (typeof module === "object" && module.exports) module.exports = api;
   root.BacochuFestivalUtils = api;
 })(typeof window === "object" ? window : globalThis);
