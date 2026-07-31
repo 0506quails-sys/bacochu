@@ -31,6 +31,8 @@ let firestoreCourses = [];
 let firestoreCommentsByCourse = new Map();
 let firestoreLikeUidsByCourse = new Map();
 let firestoreUserId = null;
+let firestoreAuthState = "loading";
+let courseSubmissionPromise = null;
 
 const { normalizeFestival, filterFestivals } = window.BacochuFestivalUtils;
 const EVENT_DATA_URL = new URL("festivals.json", document.baseURI).href;
@@ -222,6 +224,23 @@ function setFirestoreUser(userId) {
   renderSharedCourses();
 }
 
+function renderCourseAuthState() {
+  const submit = courseForm.querySelector('[type="submit"]');
+  if (!submit || courseSubmissionPromise) return;
+  // 로딩 중 클릭은 제출 핸들러가 공유 인증 Promise를 기다리므로 허용합니다.
+  submit.disabled = firestoreAuthState === "error";
+  if (firestoreAuthState === "loading") courseFormMessage.textContent = t("익명 로그인을 준비하고 있습니다.");
+  else if (firestoreAuthState === "error") {
+    courseFormMessage.innerHTML = `${escapeHtml(t("로그인에 실패했습니다. 다시 시도해 주세요."))} <button type="button" class="inline-retry" data-retry-auth>${escapeHtml(t("다시 시도"))}</button>`;
+  } else if (courseFormMessage.dataset.authMessage === "true") courseFormMessage.textContent = "";
+  courseFormMessage.dataset.authMessage = String(firestoreAuthState !== "ready");
+}
+
+function setFirestoreAuthState(state) {
+  firestoreAuthState = state;
+  renderCourseAuthState();
+}
+
 function applyFirestoreCourses(courses) {
   firestoreCourses = Array.isArray(courses) ? courses.filter((course) => course && course.id != null) : [];
   renderSharedCourses();
@@ -234,6 +253,9 @@ window.bacochuFirestore = {
   applySnapshot: applyFirestoreSnapshot,
   applyCourses: applyFirestoreCourses,
   setUser: setFirestoreUser,
+  setAuthState: setFirestoreAuthState,
+  waitForAuth: null,
+  retryAuth: null,
   createCourse: null,
   deleteCourse: null
 };
@@ -670,7 +692,11 @@ document.querySelectorAll("[data-home]").forEach((button) => button.addEventList
 document.querySelectorAll("[data-back-share]").forEach((button) => button.addEventListener("click", () => showScreen("share-screen")));
 document.querySelector("[data-back-list]").addEventListener("click", () => { renderSharedCourses(); showScreen("course-list-screen"); });
 document.querySelector("[data-open-list]").addEventListener("click", () => { renderSharedCourses(); showScreen("course-list-screen"); });
-document.querySelectorAll("[data-open-form]").forEach((button) => button.addEventListener("click", () => { courseFormMessage.textContent = ""; courseForm.reset(); setPlaceCount(1, { confirmRemoval: false }); showScreen("course-form-screen"); }));
+document.querySelectorAll("[data-open-form]").forEach((button) => button.addEventListener("click", () => { courseFormMessage.textContent = ""; courseForm.reset(); setPlaceCount(1, { confirmRemoval: false }); renderCourseAuthState(); showScreen("course-form-screen"); }));
+courseFormMessage.addEventListener("click", async (event) => {
+  if (!event.target.closest("[data-retry-auth]") || typeof window.bacochuFirestore.retryAuth !== "function") return;
+  try { await window.bacochuFirestore.retryAuth(); } catch (_) { /* firebase-client가 상태와 상세 로그를 처리합니다. */ }
+});
 sharedCourseList.addEventListener("click", (event) => {
   const favoriteButton = event.target.closest("[data-favorite-course]");
   if (favoriteButton) {
@@ -718,6 +744,7 @@ window.addEventListener("storage", (event) => {
 
 courseForm.addEventListener("submit", async (event) => {
   event.preventDefault();
+  if (courseSubmissionPromise) return courseSubmissionPromise;
   if (!courseForm.checkValidity()) {
     const invalid = courseForm.querySelector(":invalid");
     const card = invalid?.closest(".place-input-card");
@@ -739,23 +766,30 @@ courseForm.addEventListener("submit", async (event) => {
     courseFormMessage.textContent = emptyPlaceIndex >= 0 ? `${emptyPlaceIndex + 1}번째 장소의 모든 항목을 공백 없이 작성해 주세요.` : "공백만 입력할 수 없어요. 모든 항목을 내용으로 채워 주세요.";
     return;
   }
-  if (!firestoreUserId || typeof window.bacochuFirestore.createCourse !== "function") {
-    courseFormMessage.textContent = t("익명 로그인 중입니다. 잠시 후 다시 등록해 주세요.");
-    return;
-  }
-  try {
-    // 실제 저장은 firebase-client.js의 createFirestoreCourse()에서 addDoc으로 수행합니다.
-    await window.bacochuFirestore.createCourse(course);
-  } catch (error) {
-    console.error("Firestore 코스를 등록하지 못했습니다.", error);
-    courseFormMessage.textContent = t("코스를 등록하지 못했습니다. 네트워크 연결을 확인해 주세요.");
-    return;
-  }
-  courseForm.reset();
-  setPlaceCount(1, { confirmRemoval: false });
-  courseFormMessage.textContent = "";
-  renderSharedCourses();
-  showScreen("course-list-screen");
+  const submit = courseForm.querySelector('[type="submit"]');
+  courseSubmissionPromise = (async () => {
+    try {
+      submit.disabled = true;
+      if (typeof window.bacochuFirestore.waitForAuth !== "function") throw Object.assign(new Error("Firebase가 준비되지 않았습니다."), { authFailure: true });
+      courseFormMessage.textContent = t("익명 로그인을 준비하고 있습니다.");
+      await window.bacochuFirestore.waitForAuth();
+      courseFormMessage.textContent = t("코스를 등록하고 있습니다.");
+      await window.bacochuFirestore.createCourse(course);
+      courseForm.reset();
+      setPlaceCount(1, { confirmRemoval: false });
+      renderSharedCourses();
+      showScreen("course-list-screen");
+      showListNotice(t("코스가 등록되었습니다."));
+    } catch (error) {
+      console.error("코스 등록 흐름에 실패했습니다.", error);
+      const authFailure = error.authFailure || firestoreAuthState === "error" || String(error.code || "").startsWith("auth/");
+      courseFormMessage.textContent = t(authFailure ? "로그인에 실패했습니다. 다시 시도해 주세요." : "코스를 등록하지 못했습니다. 잠시 후 다시 시도해 주세요.");
+    } finally {
+      courseSubmissionPromise = null;
+      submit.disabled = firestoreAuthState === "error";
+    }
+  })();
+  return courseSubmissionPromise;
 });
 
 placeCountSelect.addEventListener("change", () => setPlaceCount(placeCountSelect.value));
@@ -996,4 +1030,5 @@ window.addEventListener("bacochu:languagechange", () => {
   renderSharedCourses(); if (selectedSharedCourseId && !document.querySelector("#course-detail-screen").hidden) openCourseDetail(selectedSharedCourseId);
   if (!document.querySelector("#event-screen").hidden) renderEvents(); const openEvent = eventDetail.querySelector("[data-current-event]")?.dataset.currentEvent; if (openEvent) openEventDetail(openEvent);
   setPlaceCount(placeCountSelect.value, { confirmRemoval: false });
+  renderCourseAuthState();
 });
