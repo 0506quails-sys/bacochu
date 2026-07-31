@@ -77,11 +77,11 @@
             <span class="action-card__arrow" aria-hidden="true">→</span>
           </button>
 
-          <button class="action-card" type="button" data-menu="바다 날씨·지도" data-screen-target="weather-map-screen">
-            <span class="action-card__icon" aria-hidden="true">🗺️</span>
+          <button class="action-card" type="button" data-menu="바다 날씨" data-screen-target="weather-screen">
+            <span class="action-card__icon" aria-hidden="true">🌤️</span>
             <span class="action-card__text">
-              <strong>바다 날씨·지도</strong>
-              <small>부산 7개 해수욕장의 현재 날씨와 위치</small>
+              <strong>바다 날씨</strong>
+              <small>부산 7개 해수욕장의 현재 날씨</small>
             </span>
             <span class="action-card__arrow" aria-hidden="true">→</span>
           </button>
@@ -250,17 +250,19 @@
         <article id="event-detail"></article>
       </section>
 
-      <section id="weather-map-screen" class="screen inner-screen weather-map-screen" aria-labelledby="weather-map-title" hidden>
+      <section id="weather-screen" class="screen inner-screen weather-screen" aria-labelledby="weather-title" hidden>
         <header class="inner-header inner-header--nav">
           <button class="back-button" type="button" data-weather-home aria-label="홈으로 가기">←</button>
-          <div><p class="inner-header__eyebrow">BUSAN BEACH WEATHER</p><h1 id="weather-map-title">바다 날씨·지도</h1></div>
+          <div><p class="inner-header__eyebrow">BUSAN BEACH WEATHER</p><h1 id="weather-title">바다 날씨</h1></div>
           <button class="home-button" type="button" data-weather-home aria-label="홈으로 가기">⌂</button>
         </header>
+        <p class="form-guide">부산 7개 해수욕장의 현재 날씨</p>
         <label class="beach-select-label" for="beach-select">해수욕장 선택
           <select id="beach-select"></select>
         </label>
+        <div id="beach-shortcuts" class="beach-shortcuts" aria-label="해수욕장 바로가기"></div>
         <article class="beach-weather-card" aria-live="polite">
-          <div class="beach-weather-card__heading"><div><span id="beach-weather-icon" aria-hidden="true">🌤️</span><h2 id="beach-weather-name"></h2></div><button id="beach-weather-refresh" type="button">↻ 새로고침</button></div>
+          <div class="beach-weather-card__heading"><div><span id="beach-weather-icon" aria-hidden="true">🌤️</span><h2 id="beach-weather-name"></h2></div></div>
           <p id="beach-weather-status">불러오는 중</p>
           <dl id="beach-weather-details" class="weather-metrics" hidden>
             <div><dt>현재 기온</dt><dd id="beach-temperature"></dd></div><div><dt>체감온도</dt><dd id="beach-apparent"></dd></div>
@@ -268,14 +270,8 @@
             <div class="weather-metrics__updated"><dt>갱신 시각</dt><dd id="beach-updated"></dd></div>
           </dl>
         </article>
-        <section class="beach-map-section" aria-labelledby="beach-map-heading">
-          <h2 id="beach-map-heading">부산 해수욕장 지도</h2>
-          <div id="beach-map" role="region" aria-label="부산 7개 해수욕장 지도"></div>
-          <p id="map-error" class="map-error" role="status" hidden>지도를 불러오지 못했어요. 아래 장소 버튼으로 날씨를 확인할 수 있습니다.</p>
-        </section>
-        <div id="beach-shortcuts" class="beach-shortcuts" aria-label="해수욕장 바로가기"></div>
-        <a id="osm-large-map" class="osm-large-map" target="_blank" rel="noopener noreferrer">큰 지도에서 보기 ↗</a>
-        <p class="weather-map-source">날씨 및 지도 데이터 출처: <a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer">Open-Meteo</a> · <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">© OpenStreetMap contributors</a></p>
+        <button id="beach-weather-refresh" class="weather-refresh-button" type="button">↻ 새로고침</button>
+        <p class="weather-source">날씨 데이터 출처: <a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer">Open-Meteo</a></p>
         <button class="restart-button" type="button" data-weather-home>← 홈으로 돌아가기</button>
       </section>
     </main>

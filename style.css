@@ -492,18 +492,17 @@ h2 {
 button, select, input, textarea, .action-card__text { min-width: 0; overflow-wrap: anywhere; }
 @media (max-width: 420px) { .language-picker { top: 7px; right: 7px; padding: 5px 6px; } .language-picker label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); } .language-picker select { max-width: 102px; } }
 
-/* 바다 날씨·지도: 지도 라이브러리는 이 화면을 열 때만 지연 로딩됩니다. */
-.weather-map-screen { gap: 18px; }
+/* 부산 7개 해수욕장 날씨 */
+.weather-screen { gap: 18px; }
 .beach-select-label { display: grid; gap: 8px; font-weight: 800; color: var(--navy); }
 .beach-select-label select { width: 100%; min-height: 48px; padding: 0 14px; border: 1px solid #c8ddea; border-radius: 14px; background: #fff; color: var(--navy); font: inherit; }
-.beach-weather-card, .beach-map-section { padding: 20px; border: 1px solid #d7e8f1; border-radius: 22px; background: #fff; box-shadow: 0 10px 30px rgba(19, 72, 103, .08); }
+.beach-weather-card { padding: 20px; border: 1px solid #d7e8f1; border-radius: 22px; background: #fff; box-shadow: 0 10px 30px rgba(19, 72, 103, .08); }
 .beach-weather-card__heading, .beach-weather-card__heading > div { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .beach-weather-card__heading h2 { margin: 0; font-size: 1.25rem; }
-.beach-weather-card__heading button, .beach-shortcuts button { min-height: 42px; border: 1px solid #9fc9dc; border-radius: 14px; background: #f5fbfe; color: var(--blue); font: inherit; font-weight: 800; cursor: pointer; }
+.beach-shortcuts button { min-height: 42px; border: 1px solid #9fc9dc; border-radius: 14px; background: #f5fbfe; color: var(--blue); font: inherit; font-weight: 800; cursor: pointer; }
 .weather-metrics { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin: 16px 0 0; }
 .weather-metrics div { padding: 12px; border-radius: 14px; background: #f3f9fc; } .weather-metrics dt { font-size: .78rem; color: #607987; } .weather-metrics dd { margin: 4px 0 0; font-weight: 900; } .weather-metrics__updated { grid-column: 1 / -1; }
-.beach-map-section h2 { margin-top: 0; font-size: 1.1rem; } #beach-map { width: 100%; height: 380px; min-height: 300px; border-radius: 16px; background: #dceaf0; z-index: 0; }
-.map-error { padding: 18px; border-radius: 14px; background: #fff3e8; color: #854b19; }
 .beach-shortcuts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }.beach-shortcuts button.is-active { border-color: var(--blue); background: var(--blue); color: #fff; }
-.osm-large-map { display: inline-flex; justify-content: center; padding: 12px; border-radius: 14px; background: #e9f7fc; color: var(--blue); font-weight: 900; text-decoration: none; }.weather-map-source { font-size: .8rem; line-height: 1.6; color: #607987; }.weather-map-source a { color: inherit; }
-@media (max-width: 520px) { #beach-map { height: 310px; } .beach-shortcuts { grid-template-columns: repeat(2, minmax(0, 1fr)); } .beach-weather-card { padding: 15px; } .beach-weather-card__heading { align-items: flex-start; } }
+.weather-refresh-button { width: 100%; padding: 12px; border: 0; border-radius: 14px; background: var(--blue); color: #fff; font-weight: 900; cursor: pointer; }
+.weather-source { margin: 0; font-size: .8rem; line-height: 1.6; color: #607987; }.weather-source a { color: inherit; }
+@media (max-width: 520px) { .beach-shortcuts { grid-template-columns: repeat(2, minmax(0, 1fr)); } .beach-weather-card { padding: 15px; } .beach-weather-card__heading { align-items: flex-start; } }
