@@ -34,7 +34,7 @@ let firestoreUserId = null;
 let firestoreAuthState = "idle";
 let courseSubmissionPromise = null;
 
-const { normalizeFestival, filterFestivals } = window.BacochuFestivalUtils;
+const { normalizeFestival, extractYears, filterFestivals } = window.BacochuFestivalUtils;
 const EVENT_DATA_URL = new URL("festivals.json", document.baseURI).href;
 const EVENT_CATEGORY_LABELS = Object.freeze({ festival: "축제", performance: "공연", exhibition: "전시", experience: "체험" });
 let officialFestivals = null;
@@ -811,6 +811,11 @@ function formatFestivalDate(item) {
   return item.startDate === item.endDate ? format(item.startDate) : `${format(item.startDate)} ~ ${format(item.endDate)}`;
 }
 
+function festivalName(item) {
+  const language = window.i18n?.language || "ko";
+  return item.names[language === "zh-CN" ? "zh" : language] || item.names.ko;
+}
+
 function showEventMessage(key, { error = false, retry = false } = {}) {
   eventList.replaceChildren();
   const message = document.createElement("p");
@@ -828,8 +833,12 @@ function showEventMessage(key, { error = false, retry = false } = {}) {
 }
 
 function populateEventYears() {
-  const years = [...new Set((officialFestivals || []).flatMap((item) => [item.startDate.slice(0, 4), item.endDate.slice(0, 4)]))].sort((a, b) => b.localeCompare(a));
-  eventYear.replaceChildren(...years.map((year) => Object.assign(document.createElement("option"), { value: year, textContent: year })));
+  const previousYear = Number(eventYear.value);
+  const years = extractYears(officialFestivals || []);
+  eventYear.replaceChildren(...years.map((year) => Object.assign(document.createElement("option"), { value: String(year), textContent: String(year) })));
+  const currentYear = Number(new Intl.DateTimeFormat("en", { year: "numeric", timeZone: "Asia/Seoul" }).format(new Date()));
+  const preferredYear = years.includes(previousYear) ? previousYear : years.includes(currentYear) ? currentYear : years[0];
+  if (preferredYear) eventYear.value = String(preferredYear);
 }
 
 async function loadFestivals({ force = false } = {}) {
@@ -853,10 +862,6 @@ async function loadFestivals({ force = false } = {}) {
       festivalLoadState = "loaded";
       console.info(`[월별 바다 행사] 전체 ${rawItems.length}개, 유효 ${validItems.length}개`);
       populateEventYears();
-      if (!eventYear.value && validItems.length) {
-        eventYear.value = validItems[0].startDate.slice(0, 4);
-        eventMonth.value = String(Number(validItems[0].startDate.slice(5, 7)));
-      }
       renderEvents();
       return officialFestivals;
     } catch (error) {
@@ -885,7 +890,7 @@ function renderEvents() {
   console.info(`[월별 바다 행사] 필터 전 ${officialFestivals.length}개, 필터 후 ${items.length}개`, { year: eventYear.value, month: eventMonth.value, categoryId: selectedEventType });
   eventList.replaceChildren();
   if (!items.length) {
-    showEventMessage("현재 공식 자료에서 확인된 행사가 없습니다.");
+    showEventMessage(selectedEventType === "all" ? "현재 공식 자료에서 확인된 행사가 없습니다." : "선택한 분류에 해당하는 행사가 없습니다.");
     return;
   }
   items.forEach((item) => {
@@ -893,7 +898,7 @@ function renderEvents() {
     const heading = document.createElement("span"); heading.className = "event-card__heading";
     const tag = document.createElement("span"); tag.className = "tag"; tag.textContent = `${t(EVENT_CATEGORY_LABELS[item.categoryId])} · ${eventStatus(item)}`;
     const arrow = document.createElement("span"); arrow.ariaHidden = "true"; arrow.textContent = "→"; heading.append(tag, arrow);
-    const title = document.createElement("h2"); title.textContent = item.name;
+    const title = document.createElement("h2"); title.textContent = festivalName(item);
     const meta = document.createElement("span"); meta.className = "event-card__meta";
     [`📅 ${formatFestivalDate(item)}`, `📍 ${item.place}`, `🌊 ${item.sea}`].forEach((value) => { const row = document.createElement("span"); row.textContent = value; meta.append(row); });
     const description = document.createElement("p"); description.className = "event-card__description"; description.textContent = item.description;
@@ -916,12 +921,12 @@ function openEventDetail(id) {
   eventDetail.replaceChildren();
   const marker = document.createElement("span"); marker.hidden = true; marker.dataset.currentEvent = item.id;
   const intro = document.createElement("p"); intro.className = "result-intro"; intro.textContent = `${t("공식 축제 정보")} · ${eventStatus(item)}`;
-  const title = document.createElement("h1"); title.id = "event-detail-title"; title.className = "event-detail-title"; title.textContent = item.name;
+  const title = document.createElement("h1"); title.id = "event-detail-title"; title.className = "event-detail-title"; title.textContent = festivalName(item);
   const summary = document.createElement("p"); summary.className = "event-detail-summary"; summary.textContent = item.description;
   const grid = document.createElement("div"); grid.className = "event-detail-grid";
   [["날짜", formatFestivalDate(item)], ["장소", item.place], ["바다", item.sea], ["공식 출처", item.sourceName], ["자료 확인일", item.verifiedAt]].forEach(([label, value]) => { const row = document.createElement("p"); const strong = document.createElement("strong"); strong.textContent = t(label); row.append(strong, ` ${value}`); grid.append(row); });
   const source = document.createElement("a"); source.className = "event-source"; source.href = item.sourceUrl; source.target = "_blank"; source.rel = "noopener noreferrer"; source.textContent = t("공식 정보 확인");
-  const notice = document.createElement("p"); notice.className = "event-notice"; notice.textContent = t("행사 일정은 변경될 수 있으므로 방문 전 공식 홈페이지를 확인해 주세요.");
+  const notice = document.createElement("p"); notice.className = "event-notice"; notice.textContent = t(item.scheduleNotice);
   eventDetail.append(marker, intro, title, summary, grid, source, notice); showScreen("event-detail-screen");
 }
 

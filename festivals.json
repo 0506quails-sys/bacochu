@@ -1,41 +1,325 @@
 [
   {
     "id": "haeundae-sand-2025",
-    "name": "2025 해운대 모래축제",
+    "names": {
+      "ko": "2025 해운대 모래축제",
+      "en": "2025 Haeundae Sand Festival",
+      "ja": "2025 海雲台砂祭り",
+      "zh": "2025 海云台沙雕节"
+    },
     "startDate": "2025-05-16",
     "endDate": "2025-05-19",
     "place": "해운대해수욕장 및 해운대광장 일원",
     "sea": "해운대해수욕장",
     "categoryId": "festival",
-    "description": "모래를 소재로 작품 전시와 체험 프로그램을 운영하는 해운대구의 공식 축제입니다.",
+    "description": "모래 작품 전시와 체험 프로그램을 운영한 해운대구 공식 축제입니다.",
     "sourceName": "해운대구 해운대 모래축제 공식 홈페이지",
     "sourceUrl": "https://www.haeundae.go.kr/sand/index.do",
-    "verifiedAt": "2026-07-31"
+    "verifiedAt": "2026-07-31",
+    "scheduleNotice": "행사 일정과 프로그램은 기상 및 주최 측 사정에 따라 변경될 수 있으므로 방문 전 공식 안내를 확인해 주세요."
   },
   {
     "id": "busan-sea-2025",
-    "name": "제29회 부산바다축제",
+    "names": {
+      "ko": "제29회 부산바다축제",
+      "en": "29th Busan Sea Festival",
+      "ja": "第29回 釜山海祭り",
+      "zh": "第29届釜山海洋节"
+    },
     "startDate": "2025-08-01",
     "endDate": "2025-08-03",
     "place": "다대포해수욕장 일원",
     "sea": "다대포해수욕장",
     "categoryId": "festival",
-    "description": "부산의 바다를 배경으로 공연과 시민 참여 프로그램을 선보이는 부산 대표 여름 축제입니다.",
+    "description": "부산의 바다를 배경으로 공연과 시민 참여 프로그램을 선보인 여름 축제입니다.",
     "sourceName": "부산문화관광축제조직위원회",
     "sourceUrl": "https://www.bfo.or.kr/festival/info/01.asp?MENUDIV=1",
-    "verifiedAt": "2026-07-31"
+    "verifiedAt": "2026-07-31",
+    "scheduleNotice": "행사 일정과 프로그램은 기상 및 주최 측 사정에 따라 변경될 수 있으므로 방문 전 공식 안내를 확인해 주세요."
   },
   {
     "id": "busan-fireworks-2025",
-    "name": "제20회 부산불꽃축제",
+    "names": {
+      "ko": "제20회 부산불꽃축제",
+      "en": "20th Busan Fireworks Festival",
+      "ja": "第20回 釜山花火祭り",
+      "zh": "第20届釜山烟花节"
+    },
     "startDate": "2025-11-15",
     "endDate": "2025-11-15",
     "place": "광안리해수욕장 일원",
     "sea": "광안리해수욕장",
     "categoryId": "festival",
-    "description": "광안대교를 배경으로 부산에서 개최되는 공식 불꽃축제입니다.",
+    "description": "광안대교를 배경으로 개최된 부산 공식 불꽃축제입니다.",
     "sourceName": "부산문화관광축제조직위원회",
     "sourceUrl": "https://www.bfo.or.kr/festival/info/02.asp?MENUDIV=1",
-    "verifiedAt": "2026-07-31"
+    "verifiedAt": "2026-07-31",
+    "scheduleNotice": "행사 일정과 프로그램은 기상 및 주최 측 사정에 따라 변경될 수 있으므로 방문 전 공식 안내를 확인해 주세요."
+  },
+  {
+    "id": "haeundae-light-2025-2026",
+    "names": {
+      "ko": "제12회 해운대 빛축제",
+      "en": "12th Haeundae Light Festival",
+      "ja": "第12回 海雲台光祭り",
+      "zh": "第12届海云台灯光节"
+    },
+    "startDate": "2025-11-29",
+    "endDate": "2026-01-18",
+    "place": "해운대해수욕장·구남로 해운대광장·해운대시장·해운대온천길",
+    "sea": "해운대해수욕장",
+    "categoryId": "exhibition",
+    "description": "해운대 해변과 도심 산책로를 빛 조형물로 연결하는 겨울 전시입니다.",
+    "sourceName": "해운대구 문화관광",
+    "sourceUrl": "https://www.haeundae.go.kr/tour/index.do?menuCd=DOM_000000302002001000",
+    "verifiedAt": "2026-07-31",
+    "scheduleNotice": "행사 일정과 프로그램은 기상 및 주최 측 사정에 따라 변경될 수 있으므로 방문 전 공식 안내를 확인해 주세요."
+  },
+  {
+    "id": "gwangalli-m-drone-2026",
+    "names": {
+      "ko": "2026 광안리 M 드론라이트쇼",
+      "en": "2026 Gwangalli M Drone Light Show",
+      "ja": "2026 広安里Mドローンライトショー",
+      "zh": "2026 广安里M无人机灯光秀"
+    },
+    "startDate": "2026-01-03",
+    "endDate": "2026-12-26",
+    "place": "광안리해수욕장 일원",
+    "sea": "광안리해수욕장",
+    "categoryId": "performance",
+    "description": "매주 토요일 광안리 밤바다에서 계절별 주제로 열리는 무료 드론 공연입니다. 공연일은 공식 월별 일정을 확인해야 합니다.",
+    "sourceName": "수영구 광안리 M 드론라이트쇼",
+    "sourceUrl": "https://www.gwangallimdroneshow.gov.kr/",
+    "verifiedAt": "2026-07-31",
+    "scheduleNotice": "행사 일정과 프로그램은 기상 및 주최 측 사정에 따라 변경될 수 있으므로 방문 전 공식 안내를 확인해 주세요."
+  },
+  {
+    "id": "haeundae-daljip-2026",
+    "names": {
+      "ko": "2026 해운대 달집태우기",
+      "en": "2026 Haeundae Daljip Burning",
+      "ja": "2026 海雲台タルチプ焼き",
+      "zh": "2026 海云台月屋焚烧活动"
+    },
+    "startDate": "2026-03-03",
+    "endDate": "2026-03-03",
+    "place": "해운대해수욕장 일원",
+    "sea": "해운대해수욕장",
+    "categoryId": "festival",
+    "description": "정월대보름 해운대 바닷가에서 한 해의 안녕을 기원하는 전통 행사입니다.",
+    "sourceName": "해운대구 문화관광",
+    "sourceUrl": "https://www.haeundae.go.kr/tour/index.do",
+    "verifiedAt": "2026-07-31",
+    "scheduleNotice": "행사 일정과 프로그램은 기상 및 주최 측 사정에 따라 변경될 수 있으므로 방문 전 공식 안내를 확인해 주세요."
+  },
+  {
+    "id": "dadaepo-daljip-2026",
+    "names": {
+      "ko": "제29회 다대포 해변알몸마라톤 및 달집문화축제",
+      "en": "29th Dadaepo Daljip Cultural Festival",
+      "ja": "第29回 多大浦タルチプ文化祭り",
+      "zh": "第29届多大浦月屋文化节"
+    },
+    "startDate": "2026-03-03",
+    "endDate": "2026-03-03",
+    "place": "다대포해수욕장 일원",
+    "sea": "다대포해수욕장",
+    "categoryId": "festival",
+    "description": "다대포 해변에서 정월대보름 세시풍속과 달집태우기를 함께하는 문화축제입니다.",
+    "sourceName": "사하구 문화관광",
+    "sourceUrl": "https://www.saha.go.kr/tour/contents.do?mId=0305020000",
+    "verifiedAt": "2026-07-31",
+    "scheduleNotice": "행사 일정과 프로그램은 기상 및 주최 측 사정에 따라 변경될 수 있으므로 방문 전 공식 안내를 확인해 주세요."
+  },
+  {
+    "id": "suyeong-daljip-2026",
+    "names": {
+      "ko": "제28회 수영전통 달집놀이",
+      "en": "28th Suyeong Traditional Daljip Festival",
+      "ja": "第28回 水営伝統タルチプ祭り",
+      "zh": "第28届水营传统月屋节"
+    },
+    "startDate": "2026-03-03",
+    "endDate": "2026-03-03",
+    "place": "광안리해수욕장 일원",
+    "sea": "광안리해수욕장",
+    "categoryId": "festival",
+    "description": "광안리 바닷가에서 수영야류 등 전통공연과 달집태우기를 진행하는 행사입니다.",
+    "sourceName": "수영구 문화관광",
+    "sourceUrl": "https://www.suyeong.go.kr/tour/index.suyeong?menuCd=DOM_000001503002000000",
+    "verifiedAt": "2026-07-31",
+    "scheduleNotice": "행사 일정과 프로그램은 기상 및 주최 측 사정에 따라 변경될 수 있으므로 방문 전 공식 안내를 확인해 주세요."
+  },
+  {
+    "id": "gijang-seaweed-2026",
+    "names": {
+      "ko": "제20회 기장미역다시마축제",
+      "en": "20th Gijang Seaweed Festival",
+      "ja": "第20回 機張ワカメ・昆布祭り",
+      "zh": "第20届机张海带昆布节"
+    },
+    "startDate": "2026-04-24",
+    "endDate": "2026-04-26",
+    "place": "기장군 일광읍 이동항 일원",
+    "sea": "이동항",
+    "categoryId": "festival",
+    "description": "기장 어촌의 미역과 다시마를 알리는 먹거리·어촌 체험 축제입니다.",
+    "sourceName": "기장미역다시마축제 공식 홈페이지",
+    "sourceUrl": "https://www.gijang.go.kr/festival/index.gijang?menuCd=DOM_000000401002000000",
+    "verifiedAt": "2026-07-31",
+    "scheduleNotice": "행사 일정과 프로그램은 기상 및 주최 측 사정에 따라 변경될 수 있으므로 방문 전 공식 안내를 확인해 주세요."
+  },
+  {
+    "id": "dadaepo-sunset-fountain-2026",
+    "names": {
+      "ko": "2026 다대포 꿈의 낙조분수",
+      "en": "2026 Dadaepo Sunset Fountain of Dreams",
+      "ja": "2026 多大浦夢の夕日噴水",
+      "zh": "2026 多大浦梦幻落日喷泉"
+    },
+    "startDate": "2026-04-25",
+    "endDate": "2026-10-31",
+    "place": "다대포해수욕장 꿈의 낙조분수",
+    "sea": "다대포해수욕장",
+    "categoryId": "performance",
+    "description": "음악과 조명에 맞춰 운영되는 공식 음악분수 프로그램입니다. 휴무일과 회차는 공식 운영표를 확인해야 합니다.",
+    "sourceName": "부산광역시 사하구 다대포 꿈의 낙조분수",
+    "sourceUrl": "https://www.saha.go.kr/fountain/main.do",
+    "verifiedAt": "2026-07-31",
+    "scheduleNotice": "행사 일정과 프로그램은 기상 및 주최 측 사정에 따라 변경될 수 있으므로 방문 전 공식 안내를 확인해 주세요."
+  },
+  {
+    "id": "haeundae-sand-2026",
+    "names": {
+      "ko": "2026 해운대 모래축제",
+      "en": "2026 Haeundae Sand Festival",
+      "ja": "2026 海雲台砂祭り",
+      "zh": "2026 海云台沙雕节"
+    },
+    "startDate": "2026-05-22",
+    "endDate": "2026-05-25",
+    "place": "해운대해수욕장 및 해운대광장 일원",
+    "sea": "해운대해수욕장",
+    "categoryId": "festival",
+    "description": "대형 모래 작품 전시와 시민 체험을 운영하는 해운대 대표 축제입니다.",
+    "sourceName": "해운대 모래축제 공식 홈페이지",
+    "sourceUrl": "https://www.haeundae.go.kr/sand/index.do",
+    "verifiedAt": "2026-07-31",
+    "scheduleNotice": "행사 일정과 프로그램은 기상 및 주최 측 사정에 따라 변경될 수 있으므로 방문 전 공식 안내를 확인해 주세요."
+  },
+  {
+    "id": "gwangalli-eobang-2026",
+    "names": {
+      "ko": "제24회 광안리어방축제",
+      "en": "24th Gwangalli Eobang Festival",
+      "ja": "第24回 広安里漁坊祭り",
+      "zh": "第24届广安里渔坊节"
+    },
+    "startDate": "2026-06-12",
+    "endDate": "2026-06-14",
+    "place": "광안리해수욕장 일원",
+    "sea": "광안리해수욕장",
+    "categoryId": "festival",
+    "description": "수영의 어촌 문화와 전통 어방을 공연·체험으로 소개하는 해변 축제입니다.",
+    "sourceName": "광안리어방축제 공식 홈페이지",
+    "sourceUrl": "https://www.suyeong.go.kr/eobang/index.suyeong",
+    "verifiedAt": "2026-07-31",
+    "scheduleNotice": "행사 일정과 프로그램은 기상 및 주최 측 사정에 따라 변경될 수 있으므로 방문 전 공식 안내를 확인해 주세요."
+  },
+  {
+    "id": "busan-port-2026",
+    "names": {
+      "ko": "제19회 부산항축제",
+      "en": "19th Busan Port Festival",
+      "ja": "第19回 釜山港祭り",
+      "zh": "第19届釜山港节"
+    },
+    "startDate": "2026-06-19",
+    "endDate": "2026-06-21",
+    "place": "부산항 북항 친수공원 및 부산항 일원",
+    "sea": "부산항·북항",
+    "categoryId": "festival",
+    "description": "부산항의 역사와 기능을 공연, 항만 체험, 해양 프로그램으로 만나는 축제입니다.",
+    "sourceName": "부산문화관광축제조직위원회",
+    "sourceUrl": "https://www.bfo.or.kr/festival/info/03.asp?MENUDIV=1",
+    "verifiedAt": "2026-07-31",
+    "scheduleNotice": "행사 일정과 프로그램은 기상 및 주최 측 사정에 따라 변경될 수 있으므로 방문 전 공식 안내를 확인해 주세요."
+  },
+  {
+    "id": "magic-festival-busking-2026",
+    "names": {
+      "ko": "제21회 부산국제매직페스티벌 매직버스킹",
+      "en": "21st Busan International Magic Festival: Magic Busking",
+      "ja": "第21回 釜山国際マジックフェスティバル・バスキング",
+      "zh": "第21届釜山国际魔术节街头表演"
+    },
+    "startDate": "2026-06-27",
+    "endDate": "2026-08-30",
+    "place": "해운대해수욕장 구남로 일원",
+    "sea": "해운대해수욕장",
+    "categoryId": "performance",
+    "description": "해운대 바닷가에서 주말마다 시민과 만나는 야외 마술 공연 프로그램입니다.",
+    "sourceName": "부산국제매직페스티벌 공식 홈페이지",
+    "sourceUrl": "https://www.hibimf.org/",
+    "verifiedAt": "2026-07-31",
+    "scheduleNotice": "행사 일정과 프로그램은 기상 및 주최 측 사정에 따라 변경될 수 있으므로 방문 전 공식 안내를 확인해 주세요."
+  },
+  {
+    "id": "north-port-sup-2026",
+    "names": {
+      "ko": "2026 북항 오션 SUP FESTA",
+      "en": "2026 North Port Ocean SUP Festa",
+      "ja": "2026 北港オーシャンSUPフェスタ",
+      "zh": "2026 北港海洋SUP嘉年华"
+    },
+    "startDate": "2026-07-31",
+    "endDate": "2026-08-09",
+    "place": "부산항 북항 친수공원 일원",
+    "sea": "부산항·북항",
+    "categoryId": "experience",
+    "description": "북항 친수공원에서 SUP 교육과 체험, 해양레저 프로그램을 운영하는 행사입니다.",
+    "sourceName": "부산광역시 해양레저관광",
+    "sourceUrl": "https://www.busan.go.kr/depart/marineindex",
+    "verifiedAt": "2026-07-31",
+    "scheduleNotice": "행사 일정과 프로그램은 기상 및 주최 측 사정에 따라 변경될 수 있으므로 방문 전 공식 안내를 확인해 주세요."
+  },
+  {
+    "id": "busan-sea-library-2026",
+    "names": {
+      "ko": "2026 부산바다도서관",
+      "en": "2026 Busan Sea Library",
+      "ja": "2026 釜山海図書館",
+      "zh": "2026 釜山海洋图书馆"
+    },
+    "startDate": "2026-07-31",
+    "endDate": "2026-08-09",
+    "place": "다대포해수욕장 해변공원 일원",
+    "sea": "다대포해수욕장",
+    "categoryId": "exhibition",
+    "description": "바다를 보며 책과 문화 프로그램을 즐기는 여름 해변 도서관입니다.",
+    "sourceName": "부산광역시 독서문화행사",
+    "sourceUrl": "https://www.busan.go.kr/library/index",
+    "verifiedAt": "2026-07-31",
+    "scheduleNotice": "행사 일정과 프로그램은 기상 및 주최 측 사정에 따라 변경될 수 있으므로 방문 전 공식 안내를 확인해 주세요."
+  },
+  {
+    "id": "busan-sea-2026",
+    "names": {
+      "ko": "제30회 부산바다축제",
+      "en": "30th Busan Sea Festival",
+      "ja": "第30回 釜山海祭り",
+      "zh": "第30届釜山海洋节"
+    },
+    "startDate": "2026-08-01",
+    "endDate": "2026-08-09",
+    "place": "다대포해수욕장 및 부산 주요 해수욕장 일원",
+    "sea": "부산 해수욕장",
+    "categoryId": "festival",
+    "description": "부산의 여러 해변에서 공연과 시민 참여 프로그램을 진행하는 대표 여름 축제입니다.",
+    "sourceName": "부산문화관광축제조직위원회",
+    "sourceUrl": "https://www.bfo.or.kr/festival/info/01.asp?MENUDIV=1",
+    "verifiedAt": "2026-07-31",
+    "scheduleNotice": "행사 일정과 프로그램은 기상 및 주최 측 사정에 따라 변경될 수 있으므로 방문 전 공식 안내를 확인해 주세요."
   }
 ]
