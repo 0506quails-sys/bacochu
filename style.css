@@ -369,6 +369,22 @@ h2 {
 .course-form fieldset { margin: 0; padding: 0; border: 0; }
 .course-form legend { margin-bottom: 9px; }
 .place-inputs { display: grid; gap: 8px; }
+.place-count-control { display: grid; gap: 9px; margin-bottom: 13px; padding: 14px; background: var(--sky); border-radius: 16px; }
+.place-count-control > label { font-size: .82rem; font-weight: 800; }
+.place-count-control select { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.place-stepper { display: grid; grid-template-columns: 44px minmax(0, 1fr) 44px; align-items: center; gap: 9px; }
+.place-stepper button { min-width: 44px; min-height: 44px; color: var(--white); background: var(--navy); border: 0; border-radius: 13px; cursor: pointer; font-size: 1.25rem; font-weight: 800; }
+.place-stepper button:disabled { color: var(--muted); background: #d6e5e3; cursor: not-allowed; }
+.place-stepper output { min-width: 0; text-align: center; font-size: .9rem; font-weight: 800; }
+.place-stepper button:focus-visible { outline: 3px solid var(--coral); outline-offset: 2px; }
+.place-inputs { gap: 14px; }
+.place-input-card { position: relative; display: grid; min-width: 0; gap: 8px; padding: 16px 14px; background: var(--white); border: 1px solid rgba(20,125,146,.16); border-radius: 17px; box-shadow: 0 6px 15px rgba(6,59,77,.05); }
+.place-input-card:not(:last-child)::after { content: "↓"; position: absolute; z-index: 1; left: 27px; bottom: -20px; display: grid; width: 24px; height: 24px; place-items: center; color: var(--white); background: var(--aqua); border-radius: 50%; font-size: .75rem; }
+.place-input-card__heading { display: flex; align-items: center; gap: 9px; margin-bottom: 3px; }
+.place-input-card__heading span { display: grid; width: 30px; height: 30px; place-items: center; color: var(--white); background: var(--aqua); border-radius: 50%; font-size: .75rem; font-weight: 800; }
+.place-input-card__heading strong { font-size: .88rem; }
+.place-input-card > label { font-size: .76rem; font-weight: 700; }
+.place-input-card > label span { color: var(--coral); }
 .radio-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; }
 .radio-row--four { grid-template-columns: repeat(2, 1fr); }
 .radio-row input { position: absolute; opacity: 0; }
@@ -382,6 +398,13 @@ h2 {
 .detail-section p { margin: 0; color: var(--muted); font-size: .83rem; line-height: 1.75; white-space: pre-wrap; }
 .detail-places { margin: 0; padding: 0; list-style: none; counter-reset: places; }
 .detail-places li { display: flex; align-items: center; gap: 10px; padding: 8px 0; font-size: .85rem; font-weight: 700; }
+.detail-places li { position: relative; align-items: flex-start; }
+.detail-places li:not(:last-child)::after { content: "↓"; position: absolute; left: 9px; bottom: -7px; color: var(--blue); font-size: .68rem; }
+.detail-places li > div { min-width: 0; padding-top: 4px; }
+.detail-places li strong { overflow-wrap: anywhere; }
+.detail-places li p { margin-top: 4px; font-size: .75rem; line-height: 1.55; }
+.detail-places address { margin-top: 3px; color: var(--blue); font-size: .72rem; font-style: normal; font-weight: 500; overflow-wrap: anywhere; }
+.detail-place-empty { color: var(--muted); }
 .detail-places li::before { counter-increment: places; content: counter(places); display: grid; width: 28px; height: 28px; place-items: center; color: var(--white); background: var(--aqua); border-radius: 50%; font-size: .72rem; }
 .course-management { margin-top: 22px; }
 .delete-course-button { width: 100%; padding: 16px 18px; color: var(--white); background: #c84a38; border: 0; border-radius: 15px; box-shadow: 0 10px 22px rgba(200,74,56,.24); cursor: pointer; font-weight: 800; }

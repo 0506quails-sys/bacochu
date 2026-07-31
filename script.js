@@ -12,6 +12,9 @@ const sharedCourseList = document.querySelector("#shared-course-list");
 const sharedCourseDetail = document.querySelector("#shared-course-detail");
 const courseForm = document.querySelector("#course-form");
 const courseFormMessage = document.querySelector("#course-form-message");
+const placeCountSelect = document.querySelector("#place-count");
+const placeCountDisplay = document.querySelector("#place-count-display");
+const placeInputs = document.querySelector("#place-inputs");
 const eventMonth = document.querySelector("#event-month");
 const eventList = document.querySelector("#event-list");
 const eventDetail = document.querySelector("#event-detail");
@@ -58,11 +61,13 @@ function isUserCreatedCourse(course) {
 function getSharedCourses() {
   try {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
-    if (Array.isArray(saved)) return saved;
+    // 손상된 항목 하나 때문에 목록 전체가 멈추지 않도록 표시 가능한 객체만 읽습니다.
+    // 원본 localStorage는 호환성과 복구 가능성을 위해 여기에서 덮어쓰지 않습니다.
+    if (Array.isArray(saved)) return saved.filter((course) => course && typeof course === "object" && course.id != null);
   } catch (error) {
     console.warn("저장된 코스를 불러오지 못했습니다.", error);
   }
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(sampleSharedCourses));
+  if (localStorage.getItem(STORAGE_KEY) === null) localStorage.setItem(STORAGE_KEY, JSON.stringify(sampleSharedCourses));
   return [...sampleSharedCourses];
 }
 
@@ -223,6 +228,58 @@ function escapeHtml(value) {
   return String(value).replace(/[&<>'"]/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[character]);
 }
 
+function normalizePlaces(course) {
+  const source = Array.isArray(course?.places) ? course.places : [course?.place1, course?.place2, course?.place3];
+  return source.slice(0, 6).map((place) => {
+    if (typeof place === "string") return { name: place.trim(), description: "", address: "" };
+    if (!place || typeof place !== "object") return null;
+    return {
+      name: String(place.name ?? place.title ?? "").trim(),
+      description: String(place.description ?? place.detail ?? "").trim(),
+      address: String(place.address ?? "").trim()
+    };
+  }).filter((place) => place?.name);
+}
+
+function placeCardMarkup(index, values = {}) {
+  const number = index + 1;
+  return `<article class="place-input-card" data-place-index="${index}">
+    <div class="place-input-card__heading"><span>${number}</span><strong>${number}번째 장소</strong></div>
+    <label for="place-name-${index}">장소명 <span aria-hidden="true">*</span></label>
+    <input id="place-name-${index}" name="placeName${index}" type="text" maxlength="60" required value="${escapeHtml(values.name || "")}" placeholder="예: 흰여울문화마을" />
+    <label for="place-description-${index}">장소 설명 <span aria-hidden="true">*</span></label>
+    <textarea id="place-description-${index}" name="placeDescription${index}" rows="3" maxlength="300" required placeholder="이 장소에서 무엇을 즐길 수 있는지 알려주세요.">${escapeHtml(values.description || "")}</textarea>
+    <label for="place-address-${index}">주소 <span aria-hidden="true">*</span></label>
+    <input id="place-address-${index}" name="placeAddress${index}" type="text" maxlength="120" required value="${escapeHtml(values.address || "")}" placeholder="예: 부산 영도구 영선동4가" />
+  </article>`;
+}
+
+function getDraftPlaces() {
+  return [...placeInputs.querySelectorAll(".place-input-card")].map((card) => ({
+    name: card.querySelector('[name^="placeName"]').value,
+    description: card.querySelector('[name^="placeDescription"]').value,
+    address: card.querySelector('[name^="placeAddress"]').value
+  }));
+}
+
+function setPlaceCount(nextCount, { confirmRemoval = true } = {}) {
+  const currentPlaces = getDraftPlaces();
+  const count = Math.max(1, Math.min(6, Number(nextCount) || 1));
+  if (count < currentPlaces.length && confirmRemoval) {
+    const removedHasContent = currentPlaces.slice(count).some((place) => Object.values(place).some((value) => value.trim()));
+    if (removedHasContent && !window.confirm("작성한 장소 정보가 삭제됩니다. 줄이시겠습니까?")) {
+      placeCountSelect.value = String(currentPlaces.length);
+      return false;
+    }
+  }
+  placeInputs.innerHTML = Array.from({ length: count }, (_, index) => placeCardMarkup(index, currentPlaces[index])).join("");
+  placeCountSelect.value = String(count);
+  placeCountDisplay.value = `총 ${count}개의 장소`;
+  document.querySelector("[data-place-decrease]").disabled = count === 1;
+  document.querySelector("[data-place-increase]").disabled = count === 6;
+  return true;
+}
+
 // 서버 없이도 바로 시험해 볼 수 있는 부산 바다 코스 예시 데이터입니다.
 const courses = [
   { name: "영도 고요한 바다 산책", tags: ["quiet", "solo", "walk"], time: "약 3시간", places: [["흰여울문화마을", "바다 절벽을 따라 걷는 골목"], ["절영해안산책로", "파도 소리를 듣는 해안 산책"], ["태종대", "숲과 바다가 만나는 전망대"]], reason: "한적한 해안길과 탁 트인 전망이 이어져 천천히 쉬며 걷고 싶은 여행자에게 잘 맞아요." },
@@ -310,12 +367,13 @@ function openCourseDetail(id) {
   if (!course) return;
   selectedSharedCourseId = String(course.id);
   const canDeleteCourse = isUserCreatedCourse(course) && Boolean(getCourseManagementCredentials(course));
+  const places = normalizePlaces(course);
   sharedCourseDetail.innerHTML = `
     <p class="result-intro">TRAVELER'S COURSE</p><h1 id="detail-title" class="course-name">${escapeHtml(course.title)}</h1>
     <p class="detail-meta">✍️ ${escapeHtml(course.author)} · ⏱ ${escapeHtml(course.duration)}</p>
     <div class="detail-actions">${favoriteButtonMarkup(course.id)}${likeButtonMarkup(course.id)}</div>
     <div class="detail-tags"><span class="tag">🌊 ${escapeHtml(course.beach)}</span><span class="tag">👥 ${escapeHtml(course.companion)}</span><span class="tag">✨ ${escapeHtml(course.mood)}</span></div>
-    <section class="detail-section"><h2>📍 방문 장소 3곳</h2><ol class="detail-places">${course.places.map((place) => `<li>${escapeHtml(place)}</li>`).join("")}</ol></section>
+    <section class="detail-section"><h2>📍 방문 장소 ${places.length}곳</h2>${places.length ? `<ol class="detail-places">${places.map((place) => `<li><div><strong>${escapeHtml(place.name)}</strong>${place.description ? `<p>${escapeHtml(place.description)}</p>` : ""}${place.address ? `<address>${escapeHtml(place.address)}</address>` : ""}</div></li>`).join("")}</ol>` : '<p class="detail-place-empty">표시할 장소 정보가 없습니다.</p>'}</section>
     <section class="detail-section"><h2>💡 코스 소개와 추천 이유</h2><p>${escapeHtml(course.description)}</p></section>
     <section class="comments" aria-labelledby="comments-title">
       <div class="comments__heading"><h2 id="comments-title">댓글</h2><strong id="comment-count"></strong></div>
@@ -511,7 +569,7 @@ document.querySelectorAll("[data-home]").forEach((button) => button.addEventList
 document.querySelectorAll("[data-back-share]").forEach((button) => button.addEventListener("click", () => showScreen("share-screen")));
 document.querySelector("[data-back-list]").addEventListener("click", () => { renderSharedCourses(); showScreen("course-list-screen"); });
 document.querySelector("[data-open-list]").addEventListener("click", () => { renderSharedCourses(); showScreen("course-list-screen"); });
-document.querySelectorAll("[data-open-form]").forEach((button) => button.addEventListener("click", () => { courseFormMessage.textContent = ""; showScreen("course-form-screen"); }));
+document.querySelectorAll("[data-open-form]").forEach((button) => button.addEventListener("click", () => { courseFormMessage.textContent = ""; courseForm.reset(); setPlaceCount(1, { confirmRemoval: false }); showScreen("course-form-screen"); }));
 sharedCourseList.addEventListener("click", (event) => {
   const favoriteButton = event.target.closest("[data-favorite-course]");
   if (favoriteButton) {
@@ -560,33 +618,44 @@ window.addEventListener("storage", (event) => {
 courseForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   if (!courseForm.checkValidity()) {
-    courseFormMessage.textContent = "입력하지 않은 필수 항목이 있어요. 모든 항목을 확인해 주세요.";
-    courseForm.querySelector(":invalid")?.focus();
+    const invalid = courseForm.querySelector(":invalid");
+    const card = invalid?.closest(".place-input-card");
+    const fieldLabel = invalid?.labels?.[0]?.textContent.trim().replace("*", "").trim();
+    courseFormMessage.textContent = card ? `${Number(card.dataset.placeIndex) + 1}번째 장소의 ${fieldLabel} 항목을 작성해 주세요.` : "입력하지 않은 필수 항목이 있어요. 모든 항목을 확인해 주세요.";
+    invalid?.focus();
     return;
   }
   const values = new FormData(courseForm);
   const password = values.get("adminPassword");
   const passwordSalt = createPasswordSalt();
+  const places = getDraftPlaces().map((place) => ({ name: place.name.trim(), description: place.description.trim(), address: place.address.trim() }));
   const course = {
     id: `course-${Date.now()}`,
     isUserCreated: true,
     title: values.get("title").trim(), author: values.get("author").trim(), beach: values.get("beach"),
-    places: [values.get("place1").trim(), values.get("place2").trim(), values.get("place3").trim()],
+    places,
     duration: values.get("duration").trim(), companion: values.get("companion"), mood: values.get("mood"), description: values.get("description").trim(),
     passwordSalt,
     // localStorage 기반 해시는 원문 저장을 피하기 위한 임시 구조이며 실제 서버 보안을 대신하지 않습니다.
     passwordHash: await hashPassword(password, passwordSalt)
   };
-  if ([course.title, course.author, course.duration, course.description, ...course.places].some((value) => !value)) {
-    courseFormMessage.textContent = "공백만 입력할 수 없어요. 모든 항목을 내용으로 채워 주세요.";
+  const emptyPlaceIndex = places.findIndex((place) => !place.name || !place.description || !place.address);
+  if ([course.title, course.author, course.duration, course.description].some((value) => !value) || emptyPlaceIndex >= 0) {
+    courseFormMessage.textContent = emptyPlaceIndex >= 0 ? `${emptyPlaceIndex + 1}번째 장소의 모든 항목을 공백 없이 작성해 주세요.` : "공백만 입력할 수 없어요. 모든 항목을 내용으로 채워 주세요.";
     return;
   }
   saveSharedCourses([course, ...getSharedCourses()]);
   courseForm.reset();
+  setPlaceCount(1, { confirmRemoval: false });
   courseFormMessage.textContent = "";
   renderSharedCourses();
   showScreen("course-list-screen");
 });
+
+placeCountSelect.addEventListener("change", () => setPlaceCount(placeCountSelect.value));
+document.querySelector("[data-place-decrease]").addEventListener("click", () => setPlaceCount(Number(placeCountSelect.value) - 1));
+document.querySelector("[data-place-increase]").addEventListener("click", () => setPlaceCount(Number(placeCountSelect.value) + 1));
+setPlaceCount(1, { confirmRemoval: false });
 
 getSharedCourses();
 
