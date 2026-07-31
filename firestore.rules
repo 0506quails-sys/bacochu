@@ -1,0 +1,80 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function shortText(value, maximum) {
+      return value is string && value.size() > 0 && value.size() <= maximum;
+    }
+
+    function validPlace(place) {
+      return place is map
+        && place.keys().hasOnly(['name', 'description', 'address'])
+        && shortText(place.name, 60)
+        && shortText(place.description, 300)
+        && shortText(place.address, 120);
+    }
+
+    function validPlaces(places) {
+      return places is list && places.size() >= 1 && places.size() <= 6
+        && validPlace(places[0])
+        && (places.size() < 2 || validPlace(places[1]))
+        && (places.size() < 3 || validPlace(places[2]))
+        && (places.size() < 4 || validPlace(places[3]))
+        && (places.size() < 5 || validPlace(places[4]))
+        && (places.size() < 6 || validPlace(places[5]));
+    }
+
+    match /courses/{courseId} {
+      allow read: if true;
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly([
+          'id', 'title', 'author', 'beach', 'category', 'places', 'duration',
+          'companion', 'mood', 'description', 'ownerUid', 'createdAt'
+        ])
+        && request.resource.data.id == courseId
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.createdAt == request.time
+        && shortText(request.resource.data.title, 40)
+        && shortText(request.resource.data.author, 20)
+        && shortText(request.resource.data.beach, 40)
+        && shortText(request.resource.data.category, 40)
+        && shortText(request.resource.data.duration, 20)
+        && request.resource.data.companion in ['혼자', '친구', '가족']
+        && request.resource.data.mood in ['휴식', '관광', '사진 촬영', '체험']
+        && shortText(request.resource.data.description, 500)
+        && validPlaces(request.resource.data.places);
+      allow update: if false;
+      allow delete: if signedIn() && resource.data.ownerUid == request.auth.uid;
+
+      match /comments/{commentId} {
+        allow read: if true;
+        allow create: if signedIn()
+          && request.resource.data.keys().hasOnly(['content', 'authorName', 'ownerUid', 'createdAt'])
+          && request.resource.data.ownerUid == request.auth.uid
+          && request.resource.data.createdAt == request.time
+          && shortText(request.resource.data.authorName, 20)
+          && shortText(request.resource.data.content, 300);
+        allow update: if false;
+        allow delete: if signedIn() && resource.data.ownerUid == request.auth.uid;
+      }
+
+      match /likes/{uid} {
+        allow read: if true;
+        allow create: if signedIn() && uid == request.auth.uid
+          && request.resource.data.keys().hasOnly(['ownerUid', 'createdAt'])
+          && request.resource.data.ownerUid == request.auth.uid
+          && request.resource.data.createdAt == request.time;
+        allow update: if false;
+        allow delete: if signedIn() && uid == request.auth.uid;
+      }
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
