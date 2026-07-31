@@ -16,6 +16,7 @@ const client = window.bacochuFirestore;
 let auth;
 let db;
 let authPromise = null;
+let initialAuthStatePromise = null;
 
 async function fetchJson(url) {
   const response = await fetch(url, { cache: "no-store" });
@@ -50,12 +51,27 @@ function serializeCourse(snapshot) {
 }
 
 function waitForInitialAuthState() {
-  return new Promise((resolve, reject) => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+  if (auth?.currentUser) return Promise.resolve(auth.currentUser);
+  if (initialAuthStatePromise) return initialAuthStatePromise;
+  initialAuthStatePromise = new Promise((resolve, reject) => {
+    let unsubscribe = () => {};
+    const timeout = window.setTimeout(() => {
+      unsubscribe();
+      resolve(auth.currentUser);
+    }, 5000);
+    unsubscribe = onAuthStateChanged(auth, (user) => {
+      window.clearTimeout(timeout);
       unsubscribe();
       resolve(user);
-    }, reject);
+    }, (error) => {
+      window.clearTimeout(timeout);
+      unsubscribe();
+      reject(error);
+    });
+  }).finally(() => {
+    initialAuthStatePromise = null;
   });
+  return initialAuthStatePromise;
 }
 
 function ensureAnonymousUser() {
@@ -75,7 +91,7 @@ function ensureAnonymousUser() {
     console.error("Firebase 익명 로그인에 실패했습니다.", error);
     client.setUser(null);
     client.setAuthState("error", error.code || error.message);
-    throw error;
+    throw Object.assign(error, { stage: "auth" });
   }).finally(() => {
     authPromise = null;
   });
@@ -119,7 +135,7 @@ async function startFirestore() {
 const initializationPromise = startFirestore().catch((error) => {
   console.error("Firebase 초기화에 실패했습니다.", error);
   client.setAuthState("error", error.code || error.message);
-  throw error;
+  throw Object.assign(error, { stage: error.stage || "firebase" });
 });
 client.waitForAuth = async () => {
   await initializationPromise;
