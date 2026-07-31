@@ -507,3 +507,16 @@ button, select, input, textarea, .action-card__text { min-width: 0; overflow-wra
 .weather-refresh-button { width: 100%; padding: 12px; border: 0; border-radius: 14px; background: var(--blue); color: #fff; font-weight: 900; cursor: pointer; }
 .weather-source { margin: 0; font-size: .8rem; line-height: 1.6; color: #607987; }.weather-source a { color: inherit; }
 @media (max-width: 520px) { .beach-shortcuts { grid-template-columns: repeat(2, minmax(0, 1fr)); } .beach-weather-card { padding: 15px; } .beach-weather-card__heading { align-items: flex-start; } }
+.choice-grid--four { grid-template-columns: repeat(4, 1fr); }
+.choice-grid--two { grid-template-columns: repeat(2, 1fr); }
+.recommendation-heading { margin: 0 0 16px; font-size: 1.25rem; }
+.recommendation-list { display: grid; gap: 18px; margin-bottom: 22px; }
+.recommendation-card { padding: 18px; background: var(--white); border-radius: 20px; box-shadow: 0 8px 20px rgba(6,59,77,.08); }
+.recommendation-card__heading { display: grid; grid-template-columns: 34px 1fr auto; gap: 10px; align-items: start; }
+.recommendation-card__heading h2 { margin: 5px 0 0; font-size: 1.1rem; }
+.recommendation-rank { display: grid; width: 32px; height: 32px; place-items: center; color: white; background: var(--aqua); border-radius: 50%; font-weight: 800; }
+.recommendation-route { margin: 0 0 13px; padding-left: 22px; color: var(--navy); font-size: .82rem; line-height: 1.8; }
+.recommendation-traits { color: var(--muted); font-size: .75rem; line-height: 1.6; }
+.recommendation-card .reason-card { margin: 12px 0; }
+.recommendation-detail-button { width: 100%; padding: 11px; color: var(--blue); background: var(--sky); border: 0; border-radius: 12px; font-weight: 800; cursor: pointer; }
+@media (max-width: 390px) { .choice-grid--four { grid-template-columns: repeat(2, 1fr); } .recommendation-card { padding: 14px; } }

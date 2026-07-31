@@ -5,6 +5,7 @@ const statusMessage = document.querySelector("#status-message");
 const form = document.querySelector("#preference-form");
 const formMessage = document.querySelector("#form-message");
 const resultContainer = document.querySelector("#course-result");
+const RECOMMENDATION_BEACH_NAMES = { gwangalli: "광안리해수욕장", haeundae: "해운대해수욕장", songjeong: "송정해수욕장", songdo: "송도해수욕장", dadaepo: "다대포해수욕장", ilgwang: "일광해수욕장", imrang: "임랑해수욕장" };
 const STORAGE_KEY = "bacochu-shared-courses";
 const LIKES_STORAGE_KEY = "bacochu-course-likes";
 const FAVORITES_STORAGE_KEY = "bacochu-course-favorites-v1";
@@ -363,7 +364,7 @@ function setPlaceCount(nextCount, { confirmRemoval = true } = {}) {
 }
 
 // 서버 없이도 바로 시험해 볼 수 있는 부산 바다 코스 예시 데이터입니다.
-const courses = [
+const legacyCourses = [
   { name: "영도 고요한 바다 산책", tags: ["quiet", "solo", "walk"], time: "약 3시간", places: [["흰여울문화마을", "바다 절벽을 따라 걷는 골목"], ["절영해안산책로", "파도 소리를 듣는 해안 산책"], ["태종대", "숲과 바다가 만나는 전망대"]], reason: "한적한 해안길과 탁 트인 전망이 이어져 천천히 쉬며 걷고 싶은 여행자에게 잘 맞아요." },
   { name: "광안리 맛있는 하루", tags: ["lively", "friends", "food"], time: "약 4시간", places: [["민락수변공원", "바다를 보며 여는 여정"], ["민락회타운", "싱싱한 부산 해산물 맛보기"], ["광안리해수욕장", "광안대교 야경과 카페 거리"]], reason: "친구와 부산의 맛을 즐기고 활기찬 해변과 야경까지 한 번에 만나기 좋은 코스예요." },
   { name: "송정 바다 모험 코스", tags: ["lively", "family", "sea"], time: "약 5시간", places: [["송정해수욕장", "초보자도 즐기기 좋은 바다"], ["해운대 블루라인파크", "해변열차로 보는 해안 풍경"], ["청사포 다릿돌전망대", "바다 위를 걷는 특별한 체험"]], reason: "즐길 거리와 편안한 이동이 어우러져 가족과 함께 신나는 바다 체험을 하기 좋아요." },
@@ -415,24 +416,38 @@ document.querySelector("[data-back-to-form]").addEventListener("click", () => sh
 form.addEventListener("submit", (event) => {
   event.preventDefault();
   const answers = new FormData(form);
-  const selections = [answers.get("mood"), answers.get("companion"), answers.get("activity")];
+  const fields = ["mood", "companion", "activity", "time", "pace", "view", "crowd"];
+  const selections = fields.map((field) => answers.get(field));
   if (selections.some((value) => !value)) {
-    formMessage.textContent = t("여행 취향 세 항목을 모두 선택해 주세요.");
+    formMessage.textContent = t("여행 취향 일곱 항목을 모두 선택해 주세요.");
     return;
   }
 
   formMessage.textContent = "";
-  const course = courses.map((item) => ({ item, score: item.tags.filter((tag) => selections.includes(tag)).length }))
-    .sort((a, b) => b.score - a.score)[0].item;
+  const answersByField = Object.fromEntries(fields.map((field, index) => [field, selections[index]]));
+  const { recommend, localize } = window.BacochuRecommendations;
+  const language = window.i18n.language;
+  const recommendations = recommend(answersByField, 3);
   resultContainer.innerHTML = `
     <p class="result-intro">BACOCU'S PICK</p>
-    <h1 id="result-title" class="course-name">${course.name}</h1>
-    <p class="course-summary">⏱ 예상 소요 시간 ${course.time}</p>
-    <div class="course-places" aria-label="추천 장소 3곳">${course.places.map((place, index) => `
-      <article class="place-card"><span class="place-number">${index + 1}</span><div><strong>${place[0]}</strong><small>${place[1]}</small></div></article>`).join("")}
-    </div>
-    <section class="reason-card"><h3>💡 이 코스를 추천하는 이유</h3><p>${course.reason}</p></section>`;
+    <h1 id="result-title" class="recommendation-heading">${t("맞춤 추천 상위 3개 코스")}</h1>
+    <div class="recommendation-list">${recommendations.map(({ item, score }, rank) => `
+      <article class="recommendation-card">
+        <div class="recommendation-card__heading"><span class="recommendation-rank">${rank + 1}</span><div><span class="tag">${t(RECOMMENDATION_BEACH_NAMES[item.beach])}</span><h2>${escapeHtml(localize(item.name, language))}</h2></div>${favoriteButtonMarkup(item.id)}</div>
+        <p class="course-summary">⏱ ${t("예상 소요 시간")} ${escapeHtml(localize(item.duration, language))} · ${t("추천 시간대")} ${escapeHtml(localize(item.timeLabel, language))}</p>
+        <ol class="recommendation-route">${item.places.map((place) => `<li>${escapeHtml(localize(place, language))}</li>`).join("")}</ol>
+        <p class="recommendation-traits">${t("추천 대상 또는 여행 성향")}: ${item.tags.slice(0, 5).map((tag) => t(tag)).join(" · ")}</p>
+        <section class="reason-card"><h3>💡 ${t("이 코스를 추천하는 이유")}</h3><p>${escapeHtml(localize(item.reason, language))}</p></section>
+        <button class="recommendation-detail-button" type="button" data-recommended-course="${item.id}">${t("코스 상세 보기")} →</button>
+      </article>`).join("")}</div>`;
   showScreen("result-screen");
+});
+
+resultContainer.addEventListener("click", (event) => {
+  const favorite = event.target.closest("[data-favorite-course]");
+  if (favorite) { toggleCourseFavorite(favorite.dataset.favoriteCourse); favorite.outerHTML = favoriteButtonMarkup(favorite.dataset.favoriteCourse); return; }
+  const detail = event.target.closest("[data-recommended-course]");
+  if (detail) openCourseDetail(detail.dataset.recommendedCourse);
 });
 
 document.querySelector("#restart-button").addEventListener("click", () => {
@@ -461,11 +476,21 @@ function renderSharedCourses() {
 }
 
 function openCourseDetail(id) {
-  const course = getSharedCourses().find((item) => String(item.id) === String(id));
+  const recommendation = window.BacochuRecommendations?.courses.find((item) => String(item.id) === String(id));
+  const language = window.i18n.language;
+  const localize = window.BacochuRecommendations?.localize;
+  const builtInCourse = recommendation && {
+    id: recommendation.id, title: localize(recommendation.name, language), author: "BACOCU",
+    beach: t(RECOMMENDATION_BEACH_NAMES[recommendation.beach]), duration: localize(recommendation.duration, language),
+    companion: recommendation.tags.slice(0, 3).map((tag) => t(tag)).join(" · "), mood: localize(recommendation.timeLabel, language),
+    places: recommendation.places.map((place) => ({ name: localize(place, language) })),
+    description: localize(recommendation.description, language), builtIn: true
+  };
+  const course = builtInCourse || getSharedCourses().find((item) => String(item.id) === String(id));
   if (!course) return;
   selectedSharedCourseId = String(course.id);
-  const canDeleteCourse = (course.source === "firestore" && course.ownerUid === firestoreUserId)
-    || (isUserCreatedCourse(course) && Boolean(getCourseManagementCredentials(course)));
+  const canDeleteCourse = !course.builtIn && ((course.source === "firestore" && course.ownerUid === firestoreUserId)
+    || (isUserCreatedCourse(course) && Boolean(getCourseManagementCredentials(course))));
   const places = normalizePlaces(course);
   sharedCourseDetail.innerHTML = `
     <p class="result-intro">TRAVELER'S COURSE</p><h1 id="detail-title" class="course-name">${escapeHtml(course.title)}</h1>
@@ -686,7 +711,10 @@ function showListNotice(message) {
 
 document.querySelectorAll("[data-home]").forEach((button) => button.addEventListener("click", () => showScreen("home-screen")));
 document.querySelectorAll("[data-back-share]").forEach((button) => button.addEventListener("click", () => showScreen("share-screen")));
-document.querySelector("[data-back-list]").addEventListener("click", () => { renderSharedCourses(); showScreen("course-list-screen"); });
+document.querySelector("[data-back-list]").addEventListener("click", () => {
+  if (window.BacochuRecommendations?.courses.some((course) => course.id === selectedSharedCourseId)) showScreen("result-screen");
+  else { renderSharedCourses(); showScreen("course-list-screen"); }
+});
 document.querySelector("[data-open-list]").addEventListener("click", () => { renderSharedCourses(); showScreen("course-list-screen"); });
 document.querySelectorAll("[data-open-form]").forEach((button) => button.addEventListener("click", () => { courseFormMessage.textContent = ""; courseForm.reset(); setPlaceCount(1, { confirmRemoval: false }); renderCourseAuthState(); showScreen("course-form-screen"); }));
 courseFormMessage.addEventListener("click", async (event) => {
