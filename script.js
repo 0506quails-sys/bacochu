@@ -31,7 +31,7 @@ let firestoreCourses = [];
 let firestoreCommentsByCourse = new Map();
 let firestoreLikeUidsByCourse = new Map();
 let firestoreUserId = null;
-let firestoreAuthState = "loading";
+let firestoreAuthState = "idle";
 let courseSubmissionPromise = null;
 
 const { normalizeFestival, filterFestivals } = window.BacochuFestivalUtils;
@@ -227,13 +227,9 @@ function setFirestoreUser(userId) {
 function renderCourseAuthState() {
   const submit = courseForm.querySelector('[type="submit"]');
   if (!submit || courseSubmissionPromise) return;
-  // 로딩 중 클릭은 제출 핸들러가 공유 인증 Promise를 기다리므로 허용합니다.
-  submit.disabled = firestoreAuthState === "error";
-  if (firestoreAuthState === "loading") courseFormMessage.textContent = t("익명 로그인을 준비하고 있습니다.");
-  else if (firestoreAuthState === "error") {
-    courseFormMessage.innerHTML = `${escapeHtml(t("로그인에 실패했습니다. 다시 시도해 주세요."))} <button type="button" class="inline-retry" data-retry-auth>${escapeHtml(t("다시 시도"))}</button>`;
-  } else if (courseFormMessage.dataset.authMessage === "true") courseFormMessage.textContent = "";
-  courseFormMessage.dataset.authMessage = String(firestoreAuthState !== "ready");
+  // 인증은 쓰기 직전에 내부적으로 준비합니다. 읽기 화면과 등록 버튼을 인증 상태로
+  // 막거나 기술적인 로그인 상태를 사용자에게 노출하지 않습니다.
+  submit.disabled = false;
 }
 
 function setFirestoreAuthState(state) {
@@ -694,8 +690,9 @@ document.querySelector("[data-back-list]").addEventListener("click", () => { ren
 document.querySelector("[data-open-list]").addEventListener("click", () => { renderSharedCourses(); showScreen("course-list-screen"); });
 document.querySelectorAll("[data-open-form]").forEach((button) => button.addEventListener("click", () => { courseFormMessage.textContent = ""; courseForm.reset(); setPlaceCount(1, { confirmRemoval: false }); renderCourseAuthState(); showScreen("course-form-screen"); }));
 courseFormMessage.addEventListener("click", async (event) => {
-  if (!event.target.closest("[data-retry-auth]") || typeof window.bacochuFirestore.retryAuth !== "function") return;
-  try { await window.bacochuFirestore.retryAuth(); } catch (_) { /* firebase-client가 상태와 상세 로그를 처리합니다. */ }
+  if (!event.target.closest("[data-retry-submit]") || courseSubmissionPromise) return;
+  // 페이지를 새로 고치지 않고 그대로 남아 있는 폼으로 전체 쓰기 흐름을 다시 실행합니다.
+  courseForm.requestSubmit();
 });
 sharedCourseList.addEventListener("click", (event) => {
   const favoriteButton = event.target.closest("[data-favorite-course]");
@@ -770,8 +767,7 @@ courseForm.addEventListener("submit", async (event) => {
   courseSubmissionPromise = (async () => {
     try {
       submit.disabled = true;
-      if (typeof window.bacochuFirestore.waitForAuth !== "function") throw Object.assign(new Error("Firebase가 준비되지 않았습니다."), { authFailure: true });
-      courseFormMessage.textContent = t("익명 로그인을 준비하고 있습니다.");
+      if (typeof window.bacochuFirestore.waitForAuth !== "function") throw Object.assign(new Error("Firebase가 준비되지 않았습니다."), { stage: "firebase" });
       await window.bacochuFirestore.waitForAuth();
       courseFormMessage.textContent = t("코스를 등록하고 있습니다.");
       await window.bacochuFirestore.createCourse(course);
@@ -782,11 +778,12 @@ courseForm.addEventListener("submit", async (event) => {
       showListNotice(t("코스가 등록되었습니다."));
     } catch (error) {
       console.error("코스 등록 흐름에 실패했습니다.", error);
-      const authFailure = error.authFailure || firestoreAuthState === "error" || String(error.code || "").startsWith("auth/");
-      courseFormMessage.textContent = t(authFailure ? "로그인에 실패했습니다. 다시 시도해 주세요." : "코스를 등록하지 못했습니다. 잠시 후 다시 시도해 주세요.");
+      const authFailure = error.stage === "firebase" || error.stage === "auth" || String(error.code || "").startsWith("auth/");
+      const messageKey = authFailure ? "현재 등록 기능을 사용할 수 없습니다. 잠시 후 다시 시도해 주세요." : "코스를 등록하지 못했습니다. 잠시 후 다시 시도해 주세요.";
+      courseFormMessage.innerHTML = `${escapeHtml(t(messageKey))} <button type="button" class="inline-retry" data-retry-submit>${escapeHtml(t("다시 시도"))}</button>`;
     } finally {
       courseSubmissionPromise = null;
-      submit.disabled = firestoreAuthState === "error";
+      submit.disabled = false;
     }
   })();
   return courseSubmissionPromise;
