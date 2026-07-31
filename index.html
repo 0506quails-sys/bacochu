@@ -47,7 +47,11 @@
             <p class="menu__eyebrow">어디로 떠나볼까요?</p>
             <h2 id="menu-title">바다를 즐기는 방법</h2>
           </div>
-          <span class="menu__weather" aria-label="맑은 날씨">☀️ 24°</span>
+          <section class="menu__weather" aria-live="polite" aria-label="광안리 현재 날씨">
+            <div><strong id="weather-location">광안리 현재 날씨</strong><span id="weather-status">날씨 정보를 불러오는 중…</span></div>
+            <div id="weather-details" hidden><span id="weather-temperature"></span><span id="weather-apparent"></span><span id="weather-wind"></span><span id="weather-updated"></span></div>
+            <button id="weather-refresh" type="button">새로고침</button>
+          </section>
         </div>
 
         <div class="menu__actions">
@@ -210,8 +214,10 @@
           <div><p class="inner-header__eyebrow">BUSAN SEA EVENTS</p><h1 id="event-title">월별 바다 행사</h1></div>
           <button class="home-button" type="button" data-event-home aria-label="홈으로 가기">⌂</button>
         </header>
-        <p class="form-guide">부산 바다와 해수욕장 주변의 다채로운 행사를 월별로 둘러보세요. 아래 내용은 기능 확인을 위한 예시입니다.</p>
+        <p class="form-guide">공식 자료에서 확인된 부산 바다 축제를 연도와 월별로 둘러보세요.</p>
+        <p class="event-notice">행사 일정은 변경될 수 있으므로 방문 전 공식 홈페이지를 확인해 주세요.</p>
         <div class="event-controls">
+          <label class="month-select">행사 연도 선택<select id="event-year" aria-controls="event-list"></select></label>
           <label class="month-select">행사 월 선택
             <select id="event-month" aria-controls="event-list">
               <option value="1">1월</option><option value="2">2월</option><option value="3">3월</option>
@@ -242,6 +248,7 @@
     </main>
 
     <script src="i18n.js"></script>
+    <script src="festivals.js"></script>
     <script src="script.js"></script>
     <script type="module" src="firebase-client.js"></script>
   </body>

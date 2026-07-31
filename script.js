@@ -18,6 +18,7 @@ const placeCountSelect = document.querySelector("#place-count");
 const placeCountDisplay = document.querySelector("#place-count-display");
 const placeInputs = document.querySelector("#place-inputs");
 const eventMonth = document.querySelector("#event-month");
+const eventYear = document.querySelector("#event-year");
 const eventList = document.querySelector("#event-list");
 const eventDetail = document.querySelector("#event-detail");
 let selectedEventType = "전체";
@@ -31,20 +32,7 @@ let firestoreCommentsByCourse = new Map();
 let firestoreLikeUidsByCourse = new Map();
 let firestoreUserId = null;
 
-// 외부 API와 연결하지 않은 기능 확인용 가상 행사 데이터입니다. 실제 개최가 확정된 행사가 아닙니다.
-const sampleSeaEvents = [
-  { id: "sea-jan", month: 1, name: "송정 새해 바다 산책 주간", date: "1월 2일 ~ 1월 8일", place: "송정해수욕장 안내광장", type: "체험", description: "겨울 바다를 천천히 걸으며 해변 생태 이야기를 듣는 가상 프로그램입니다.", sea: "송정해수욕장", audience: "가벼운 산책을 좋아하는 여행자", tip: "바닷바람을 막을 따뜻한 겉옷을 준비해 주세요.", directions: "동해선 송정역에서 도보로 이동하는 설정입니다." },
-  { id: "sea-mar", month: 3, name: "영도 파도 사진 전시", date: "3월 9일 ~ 3월 24일", place: "흰여울 해안 갤러리(가상)", type: "전시", description: "영도 바다의 사계절을 사진으로 만나는 가상 전시입니다.", sea: "영도 바다", audience: "사진과 조용한 실내 관람을 즐기는 분", tip: "해안 산책로와 함께 둘러보는 코스를 추천합니다.", directions: "부산역에서 영도 방면 시내버스를 이용하는 설정입니다." },
-  { id: "sea-apr", month: 4, name: "다대포 노을 음악회", date: "4월 20일", place: "다대포해수욕장 잔디광장", type: "공연", description: "노을과 함께 어쿠스틱 음악을 감상하는 가상 야외 공연입니다.", sea: "다대포해수욕장", audience: "가족, 친구와 노을을 즐기고 싶은 분", tip: "돗자리와 저녁 기온에 대비할 얇은 겉옷이 유용합니다.", directions: "도시철도 1호선 다대포해수욕장역에서 도보 이동하는 설정입니다." },
-  { id: "sea-may", month: 5, name: "광안리 바다 공예 마켓", date: "5월 11일 ~ 5월 12일", place: "광안리 해변 산책로", type: "체험", description: "바다를 주제로 한 소품을 보고 간단한 만들기에 참여하는 가상 행사입니다.", sea: "광안리해수욕장", audience: "공예를 좋아하는 친구와 가족", tip: "체험별 운영 시간이 다르다는 가정이므로 현장 안내를 확인해 주세요.", directions: "도시철도 2호선 광안역에서 도보 이동하는 설정입니다." },
-  { id: "sea-jun", month: 6, name: "송도 해변 문화 축제", date: "6월 15일 ~ 6월 16일", place: "송도해수욕장 중앙광장", type: "축제", description: "해변 놀이와 지역 문화를 함께 즐기는 가상 축제입니다.", sea: "송도해수욕장", audience: "다양한 해변 프로그램을 즐기고 싶은 분", tip: "햇빛을 피할 모자와 개인 물병을 준비해 주세요.", directions: "남포동에서 송도 방면 시내버스를 이용하는 설정입니다." },
-  { id: "sea-jul-festival", month: 7, name: "해운대 여름 파도 축제", date: "7월 19일 ~ 7월 21일", place: "해운대해수욕장 이벤트광장", type: "축제", description: "여름 바다를 주제로 공연과 체험을 선보이는 가상 축제입니다.", sea: "해운대해수욕장", audience: "활기찬 여름 바다를 좋아하는 여행자", tip: "혼잡을 피하려면 대중교통을 이용하고 자외선 차단제를 준비해 주세요.", directions: "도시철도 2호선 해운대역에서 도보 이동하는 설정입니다." },
-  { id: "sea-jul-show", month: 7, name: "광안대교 달빛 버스킹", date: "7월 27일", place: "민락수변공원 공연 구역(가상)", type: "공연", description: "광안대교 야경을 배경으로 즐기는 가상 소규모 공연입니다.", sea: "광안리해수욕장", audience: "야경과 라이브 음악을 좋아하는 분", tip: "관람석이 한정된 설정이므로 조금 일찍 도착해 주세요.", directions: "도시철도 2호선 광안역에서 해변 방향으로 이동하는 설정입니다." },
-  { id: "sea-aug", month: 8, name: "일광 어린이 바다 탐험", date: "8월 10일", place: "일광해수욕장 체험 구역", type: "체험", description: "안전 교육과 모래 해변 관찰을 함께하는 가상 체험입니다.", sea: "일광해수욕장", audience: "보호자를 동반한 어린이", tip: "젖어도 되는 옷과 여벌 옷을 챙겨 주세요.", directions: "동해선 일광역에서 해수욕장까지 도보 이동하는 설정입니다." },
-  { id: "sea-sep", month: 9, name: "기장 바다 이야기 전시", date: "9월 5일 ~ 9월 29일", place: "기장 해안문화공간(가상)", type: "전시", description: "기장 어촌과 해안의 이야기를 그림과 기록으로 소개하는 가상 전시입니다.", sea: "기장 바다", audience: "지역 문화와 기록에 관심 있는 분", tip: "주변 해안 산책 시간을 함께 계획해 보세요.", directions: "동해선 기장역에서 지역 버스로 환승하는 설정입니다." },
-  { id: "sea-oct", month: 10, name: "다대포 갈대와 바다 축제", date: "10월 12일 ~ 10월 13일", place: "다대포 고우니생태길 일대", type: "축제", description: "가을 생태길과 바다 풍경을 함께 즐기는 가상 축제입니다.", sea: "다대포해수욕장", audience: "가을 산책과 생태 관찰을 좋아하는 분", tip: "편한 신발을 신고 지정된 탐방로를 이용해 주세요.", directions: "도시철도 1호선 다대포해수욕장역에서 도보 이동하는 설정입니다." },
-  { id: "sea-dec", month: 12, name: "청사포 겨울빛 공연", date: "12월 21일", place: "청사포 어울마당(가상)", type: "공연", description: "등대와 겨울 바다를 배경으로 음악을 듣는 가상 공연입니다.", sea: "청사포 바다", audience: "차분한 연말 분위기를 원하는 여행자", tip: "방한용품을 준비하고 해가 지기 전 주변을 둘러보세요.", directions: "해운대에서 청사포 방면 마을버스를 이용하는 설정입니다." }
-];
+const officialFestivals = Array.isArray(window.BACOCHU_FESTIVALS) ? window.BACOCHU_FESTIVALS : [];
 
 const sampleSharedCourses = [
   { id: "sample-1", title: "다대포 노을 따라 걷는 하루", author: "노을수집가", beach: "다대포해수욕장", places: ["아미산전망대", "고우니생태길", "다대포해수욕장"], duration: "약 4시간", companion: "친구", mood: "사진 촬영", description: "낙동강과 바다가 만나는 풍경부터 붉은 노을까지 차례로 만나는 코스예요. 해 질 무렵 다대포에 도착하면 멋진 사진을 남길 수 있어 추천해요." },
@@ -757,66 +745,146 @@ setPlaceCount(1, { confirmRemoval: false });
 
 getSharedCourses();
 
+function eventStatus(item) {
+  const today = new Date();
+  const localToday = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+  if (item.endDate < localToday) return t("종료");
+  if (item.startDate > localToday) return t("예정");
+  return t("진행 중");
+}
+
+function formatFestivalDate(item) {
+  const formatter = new Intl.DateTimeFormat(currentLocale(), { year: "numeric", month: "long", day: "numeric", timeZone: "Asia/Seoul" });
+  const start = formatter.format(new Date(`${item.startDate}T00:00:00+09:00`));
+  const end = formatter.format(new Date(`${item.endDate}T00:00:00+09:00`));
+  return item.startDate === item.endDate ? start : `${start} ~ ${end}`;
+}
+
 function renderEvents() {
+  const year = Number(eventYear.value);
   const month = Number(eventMonth.value);
-  const items = sampleSeaEvents.filter((event) => event.month === month && (selectedEventType === "전체" || event.type === selectedEventType));
-  eventList.innerHTML = items.length ? items.map((event) => `
-    <button class="event-card" type="button" data-event-id="${event.id}">
-      <span class="event-card__heading"><span class="tag">${t(event.type)}</span><span aria-hidden="true">→</span></span>
-      <h2>${event.name}</h2>
-      <span class="event-card__meta"><span>📅 ${event.date}</span><span>📍 ${event.place}</span><span>🌊 ${event.sea}</span></span>
-      <p class="event-card__description">${event.description}</p>
-    </button>`).join("") : `<p class="event-empty">${t("이달에는 등록된 행사가 없습니다")}</p>`;
-  window.i18n.apply(eventList);
+  const items = officialFestivals.filter((item) => {
+    const start = new Date(`${item.startDate}T00:00:00+09:00`);
+    const end = new Date(`${item.endDate}T23:59:59+09:00`);
+    const rangeStart = new Date(`${year}-${String(month).padStart(2, "0")}-01T00:00:00+09:00`);
+    const rangeEnd = new Date(year, month, 0, 23, 59, 59);
+    return start <= rangeEnd && end >= rangeStart && (selectedEventType === "전체" || item.type === selectedEventType);
+  });
+  eventList.replaceChildren();
+  if (!items.length) {
+    const empty = document.createElement("p"); empty.className = "event-empty"; empty.textContent = t("현재 공식 자료에서 확인된 행사가 없습니다."); eventList.append(empty); return;
+  }
+  items.forEach((item) => {
+    const card = document.createElement("button"); card.className = "event-card"; card.type = "button"; card.dataset.eventId = item.id;
+    const heading = document.createElement("span"); heading.className = "event-card__heading";
+    const tag = document.createElement("span"); tag.className = "tag"; tag.textContent = `${t(item.type)} · ${eventStatus(item)}`;
+    const arrow = document.createElement("span"); arrow.ariaHidden = "true"; arrow.textContent = "→"; heading.append(tag, arrow);
+    const title = document.createElement("h2"); title.textContent = item.name;
+    const meta = document.createElement("span"); meta.className = "event-card__meta";
+    [ `📅 ${formatFestivalDate(item)}`, `📍 ${item.place}`, `🌊 ${item.sea}` ].forEach((value) => { const row = document.createElement("span"); row.textContent = value; meta.append(row); });
+    const description = document.createElement("p"); description.className = "event-card__description"; description.textContent = item.description;
+    card.append(heading, title, meta, description); eventList.append(card);
+  });
+}
+
+function populateEventYears() {
+  const years = [...new Set(officialFestivals.flatMap((item) => [Number(item.startDate.slice(0, 4)), Number(item.endDate.slice(0, 4))]))].sort((a, b) => b - a);
+  const current = new Date().getFullYear(); if (!years.includes(current)) years.unshift(current);
+  eventYear.replaceChildren(...years.map((year) => { const option = document.createElement("option"); option.value = String(year); option.textContent = String(year); return option; }));
 }
 
 function openEvents() {
-  eventMonth.value = String(new Date().getMonth() + 1);
+  const now = new Date(); eventYear.value = String(now.getFullYear()); eventMonth.value = String(now.getMonth() + 1);
   selectedEventType = "전체";
-  document.querySelectorAll("[data-event-type]").forEach((button) => {
-    const active = button.dataset.eventType === "전체";
-    button.classList.toggle("is-active", active);
-    button.setAttribute("aria-pressed", String(active));
-  });
-  renderEvents();
-  showScreen("event-screen");
+  document.querySelectorAll("[data-event-type]").forEach((button) => { const active = button.dataset.eventType === "전체"; button.classList.toggle("is-active", active); button.setAttribute("aria-pressed", String(active)); });
+  renderEvents(); showScreen("event-screen");
 }
 
 function openEventDetail(id) {
-  const event = sampleSeaEvents.find((item) => item.id === id);
-  if (!event) return;
-  eventDetail.innerHTML = `
-    <span hidden data-current-event="${event.id}"></span><p class="result-intro">SAMPLE SEA EVENT · ${t(event.type)}</p>
-    <h1 id="event-detail-title" class="event-detail-title">${event.name}</h1>
-    <p class="event-detail-summary">${event.description}</p>
-    <div class="event-detail-grid"><p><strong>${t("날짜")}</strong> ${event.date}</p><p><strong>${t("장소")}</strong> ${event.place}</p><p><strong>${t("바다")}</strong> ${event.sea}</p></div>
-    <section class="detail-section"><h2>👥 ${t("추천 대상")}</h2><p>${event.audience}</p></section>
-    <section class="detail-section"><h2>💡 ${t("이용 팁")}</h2><p>${event.tip}</p></section>
-    <section class="detail-section"><h2>🚌 ${t("찾아가는 방법")}</h2><p>${event.directions}</p></section>`;
-  window.i18n.apply(eventDetail);
-  showScreen("event-detail-screen");
+  const item = officialFestivals.find((festival) => festival.id === id); if (!item) return;
+  eventDetail.replaceChildren();
+  const marker = document.createElement("span"); marker.hidden = true; marker.dataset.currentEvent = item.id;
+  const intro = document.createElement("p"); intro.className = "result-intro"; intro.textContent = `${t("공식 축제 정보")} · ${eventStatus(item)}`;
+  const title = document.createElement("h1"); title.id = "event-detail-title"; title.className = "event-detail-title"; title.textContent = item.name;
+  const summary = document.createElement("p"); summary.className = "event-detail-summary"; summary.textContent = item.description;
+  const grid = document.createElement("div"); grid.className = "event-detail-grid";
+  [["날짜", formatFestivalDate(item)], ["장소", item.place], ["바다", item.sea], ["자료 확인일", item.verifiedAt]].forEach(([label, value]) => { const row = document.createElement("p"); const strong = document.createElement("strong"); strong.textContent = t(label); row.append(strong, ` ${value}`); grid.append(row); });
+  const source = document.createElement("a"); source.className = "event-source"; source.href = item.sourceUrl; source.target = "_blank"; source.rel = "noopener noreferrer"; source.textContent = t("공식 정보 확인");
+  const notice = document.createElement("p"); notice.className = "event-notice"; notice.textContent = t("행사 일정은 변경될 수 있으므로 방문 전 공식 홈페이지를 확인해 주세요.");
+  eventDetail.append(marker, intro, title, summary, grid, source, notice); showScreen("event-detail-screen");
 }
 
+eventYear.addEventListener("change", renderEvents);
 eventMonth.addEventListener("change", renderEvents);
 document.querySelector("#event-filters").addEventListener("click", (event) => {
-  const button = event.target.closest("[data-event-type]");
-  if (!button) return;
-  selectedEventType = button.dataset.eventType;
-  document.querySelectorAll("[data-event-type]").forEach((item) => {
-    const active = item === button;
-    item.classList.toggle("is-active", active);
-    item.setAttribute("aria-pressed", String(active));
-  });
-  renderEvents();
+  const button = event.target.closest("[data-event-type]"); if (!button) return; selectedEventType = button.dataset.eventType;
+  document.querySelectorAll("[data-event-type]").forEach((item) => { const active = item === button; item.classList.toggle("is-active", active); item.setAttribute("aria-pressed", String(active)); }); renderEvents();
 });
-eventList.addEventListener("click", (event) => {
-  const card = event.target.closest("[data-event-id]");
-  if (card) openEventDetail(card.dataset.eventId);
-});
+eventList.addEventListener("click", (event) => { const card = event.target.closest("[data-event-id]"); if (card) openEventDetail(card.dataset.eventId); });
 document.querySelector("[data-back-events]").addEventListener("click", () => showScreen("event-screen"));
 document.querySelectorAll("[data-event-home]").forEach((button) => button.addEventListener("click", () => showScreen("home-screen")));
+populateEventYears();
+
+const WEATHER_LOCATION = Object.freeze({ nameKey: "광안리 현재 날씨", latitude: 35.1532, longitude: 129.1187 });
+const WEATHER_CACHE_KEY = "bacochu-weather-gwangalli-v1";
+const WEATHER_CACHE_MS = 10 * 60 * 1000;
+const weatherStatus = document.querySelector("#weather-status");
+const weatherDetails = document.querySelector("#weather-details");
+const weatherRefresh = document.querySelector("#weather-refresh");
+
+function weatherCodeKey(code) {
+  if (code === 0) return "맑음";
+  if ([1, 2, 3].includes(code)) return "흐림";
+  if ([45, 48].includes(code)) return "안개";
+  if ([51, 53, 55, 56, 57, 61, 63, 65, 66, 67].includes(code)) return "비";
+  if ([71, 73, 75, 77, 85, 86].includes(code)) return "눈";
+  if ([80, 81, 82].includes(code)) return "소나기";
+  if ([95, 96, 99].includes(code)) return "뇌우";
+  return "알 수 없음";
+}
+
+function validWeatherCache(value) {
+  return value && Number.isFinite(value.fetchedAt) && Number.isFinite(value.temperature) && Number.isFinite(value.apparent) && Number.isFinite(value.wind) && Number.isInteger(value.code);
+}
+
+function readWeatherCache() {
+  try { const value = JSON.parse(localStorage.getItem(WEATHER_CACHE_KEY)); return validWeatherCache(value) ? value : null; } catch (_) { return null; }
+}
+
+function displayWeather(data) {
+  weatherStatus.textContent = t(weatherCodeKey(data.code));
+  document.querySelector("#weather-temperature").textContent = `${t("기온")} ${data.temperature} °C`;
+  document.querySelector("#weather-apparent").textContent = `${t("체감온도")} ${data.apparent} °C`;
+  document.querySelector("#weather-wind").textContent = `${t("풍속")} ${data.wind} km/h`;
+  document.querySelector("#weather-updated").textContent = `${t("마지막 갱신")} ${new Intl.DateTimeFormat(currentLocale(), { dateStyle: "short", timeStyle: "short", timeZone: "Asia/Seoul" }).format(data.fetchedAt)}`;
+  weatherDetails.hidden = false;
+}
+
+async function loadWeather({ force = false } = {}) {
+  const cached = readWeatherCache();
+  if (!force && cached && Date.now() - cached.fetchedAt < WEATHER_CACHE_MS) { displayWeather(cached); return; }
+  weatherRefresh.disabled = true; weatherDetails.hidden = true; weatherStatus.textContent = t("날씨 정보를 불러오는 중…");
+  const params = new URLSearchParams({ latitude: String(WEATHER_LOCATION.latitude), longitude: String(WEATHER_LOCATION.longitude), current: "temperature_2m,apparent_temperature,weather_code,wind_speed_10m", timezone: "Asia/Seoul", temperature_unit: "celsius", wind_speed_unit: "kmh" });
+  try {
+    const response = await fetch(`https://api.open-meteo.com/v1/forecast?${params}`); if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const body = await response.json(); const current = body.current; const units = body.current_units;
+    if (!current || units?.temperature_2m !== "°C" || units?.apparent_temperature !== "°C" || units?.wind_speed_10m !== "km/h") throw new Error("Unexpected Open-Meteo units");
+    const data = { fetchedAt: Date.now(), temperature: Number(current.temperature_2m), apparent: Number(current.apparent_temperature), wind: Number(current.wind_speed_10m), code: Number(current.weather_code) };
+    if (!validWeatherCache(data)) throw new Error("Invalid Open-Meteo values");
+    try { localStorage.setItem(WEATHER_CACHE_KEY, JSON.stringify(data)); } catch (_) {} displayWeather(data);
+  } catch (error) {
+    console.warn("Open-Meteo 날씨 요청에 실패했습니다.", error);
+    if (cached) displayWeather(cached); else { weatherDetails.hidden = true; weatherStatus.textContent = t("현재 날씨 정보를 불러올 수 없습니다. 잠시 후 다시 시도해 주세요."); }
+  } finally { weatherRefresh.disabled = false; }
+}
+
+weatherRefresh.addEventListener("click", () => loadWeather({ force: true }));
+loadWeather();
 
 window.addEventListener("bacochu:languagechange", () => {
+  document.querySelector("#weather-location").textContent = t(WEATHER_LOCATION.nameKey);
+  weatherRefresh.textContent = t("새로고침");
+  const cachedWeather = readWeatherCache(); if (cachedWeather && !weatherRefresh.disabled) displayWeather(cachedWeather);
   renderSharedCourses();
   if (selectedSharedCourseId && !document.querySelector("#course-detail-screen").hidden) openCourseDetail(selectedSharedCourseId);
   if (!document.querySelector("#event-screen").hidden) renderEvents();
