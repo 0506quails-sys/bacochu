@@ -1,3 +1,5 @@
+const t = (key, vars) => window.i18n.t(key, vars);
+const currentLocale = () => ({ ko: "ko-KR", en: "en-US", ja: "ja-JP", "zh-CN": "zh-CN" })[window.i18n.language];
 const menuButtons = document.querySelectorAll("[data-menu]");
 const statusMessage = document.querySelector("#status-message");
 const form = document.querySelector("#preference-form");
@@ -271,14 +273,14 @@ function removeCourseComments(courseId) {
 
 function likeButtonMarkup(courseId) {
   const { liked, count } = getCourseLike(courseId);
-  const action = liked ? "좋아요 취소" : "좋아요";
+  const action = liked ? t("좋아요 취소") : t("좋아요");
   return `<button class="like-button${liked ? " is-liked" : ""}" type="button" data-like-course="${escapeHtml(courseId)}" aria-label="${action}, 현재 ${count}개" aria-pressed="${liked}"><span class="like-button__heart" aria-hidden="true">${liked ? "♥" : "♡"}</span><span class="like-button__count" aria-hidden="true">${count}</span></button>`;
 }
 
 function favoriteButtonMarkup(courseId) {
   const saved = isCourseFavorite(courseId);
-  const label = saved ? "즐겨찾기 해제" : "즐겨찾기 저장";
-  return `<button class="favorite-button${saved ? " is-saved" : ""}" type="button" data-favorite-course="${escapeHtml(courseId)}" aria-label="${label}" aria-pressed="${saved}"><svg class="favorite-button__icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6.75 3.75h10.5v16.5L12 16.5l-5.25 3.75V3.75Z" /></svg><span>${saved ? "저장됨" : "즐겨찾기"}</span></button>`;
+  const label = saved ? t("즐겨찾기 해제") : t("즐겨찾기 저장");
+  return `<button class="favorite-button${saved ? " is-saved" : ""}" type="button" data-favorite-course="${escapeHtml(courseId)}" aria-label="${label}" aria-pressed="${saved}"><svg class="favorite-button__icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6.75 3.75h10.5v16.5L12 16.5l-5.25 3.75V3.75Z" /></svg><span>${saved ? t("저장됨") : t("즐겨찾기")}</span></button>`;
 }
 
 function createPasswordSalt() {
@@ -335,14 +337,15 @@ function setPlaceCount(nextCount, { confirmRemoval = true } = {}) {
   const count = Math.max(1, Math.min(6, Number(nextCount) || 1));
   if (count < currentPlaces.length && confirmRemoval) {
     const removedHasContent = currentPlaces.slice(count).some((place) => Object.values(place).some((value) => value.trim()));
-    if (removedHasContent && !window.confirm("작성한 장소 정보가 삭제됩니다. 줄이시겠습니까?")) {
+    if (removedHasContent && !window.confirm(t("작성한 장소 정보가 삭제됩니다. 줄이시겠습니까?"))) {
       placeCountSelect.value = String(currentPlaces.length);
       return false;
     }
   }
   placeInputs.innerHTML = Array.from({ length: count }, (_, index) => placeCardMarkup(index, currentPlaces[index])).join("");
   placeCountSelect.value = String(count);
-  placeCountDisplay.value = `총 ${count}개의 장소`;
+  placeCountDisplay.value = t("총 {count}개의 장소", { count });
+  window.i18n.apply(placeInputs);
   document.querySelector("[data-place-decrease]").disabled = count === 1;
   document.querySelector("[data-place-increase]").disabled = count === 6;
   return true;
@@ -388,7 +391,7 @@ form.addEventListener("submit", (event) => {
   const answers = new FormData(form);
   const selections = [answers.get("mood"), answers.get("companion"), answers.get("activity")];
   if (selections.some((value) => !value)) {
-    formMessage.textContent = "여행 취향 세 항목을 모두 선택해 주세요.";
+    formMessage.textContent = t("여행 취향 세 항목을 모두 선택해 주세요.");
     return;
   }
 
@@ -428,6 +431,7 @@ function renderSharedCourses() {
       </button>
       <div class="shared-course-card__actions">${favoriteButtonMarkup(course.id)}${likeButtonMarkup(course.id)}</div>
     </article>`).join("");
+  window.i18n.apply(sharedCourseList);
 }
 
 function openCourseDetail(id) {
@@ -459,6 +463,7 @@ function openCourseDetail(id) {
       <div id="comment-list" class="comment-list" aria-live="polite"></div>
     </section>
     ${canDeleteCourse ? '<div class="course-management"><button class="delete-course-button" type="button" data-delete-course>코스 삭제</button><p class="delete-message" role="alert" aria-live="assertive"></p></div>' : ""}`;
+  window.i18n.apply(sharedCourseDetail);
   renderComments(course.id);
   showScreen("course-detail-screen");
 }
@@ -475,7 +480,7 @@ function renderComments(courseId, message = "") {
   if (!validComments.length) {
     const empty = document.createElement("p");
     empty.className = "comment-empty";
-    empty.textContent = "아직 작성된 댓글이 없습니다. 첫 댓글을 남겨보세요!";
+    empty.textContent = t("아직 작성된 댓글이 없습니다. 첫 댓글을 남겨보세요!");
     list.append(empty);
   } else {
     [...validComments].sort((a, b) => Number(a.createdAt) - Number(b.createdAt)).forEach((comment) => {
@@ -489,7 +494,7 @@ function renderComments(courseId, message = "") {
       const time = document.createElement("time");
       const date = new Date(comment.createdAt);
       time.dateTime = Number.isNaN(date.getTime()) ? "" : date.toISOString();
-      time.textContent = Number.isNaN(date.getTime()) ? "작성 시각 정보 없음" : new Intl.DateTimeFormat("ko-KR", { dateStyle: "medium", timeStyle: "short" }).format(date);
+      time.textContent = Number.isNaN(date.getTime()) ? "작성 시각 정보 없음" : new Intl.DateTimeFormat(currentLocale(), { dateStyle: "medium", timeStyle: "short" }).format(date);
       meta.append(nickname, time);
       header.append(meta);
       // 이 브라우저 식별값 비교는 삭제 버튼 구분용일 뿐 실제 인증이나 보안 기능이 아닙니다.
@@ -499,7 +504,7 @@ function renderComments(courseId, message = "") {
         deleteButton.className = "comment-delete";
         deleteButton.dataset.deleteComment = String(comment.id);
         deleteButton.setAttribute("aria-label", `${nickname.textContent}님의 댓글 삭제`);
-        deleteButton.textContent = "삭제";
+        deleteButton.textContent = t("삭제");
         header.append(deleteButton);
       }
       const content = document.createElement("p");
@@ -516,7 +521,7 @@ function renderComments(courseId, message = "") {
 sharedCourseDetail.addEventListener("click", async (event) => {
   const commentDeleteButton = event.target.closest("[data-delete-comment]");
   if (commentDeleteButton) {
-    if (!window.confirm("이 댓글을 삭제하시겠습니까?")) return;
+    if (!window.confirm(t("이 댓글을 삭제하시겠습니까?"))) return;
     const store = getCommentStore();
     const courseId = String(selectedSharedCourseId);
     const comments = getLocalCourseComments(store, courseId);
@@ -549,17 +554,17 @@ sharedCourseDetail.addEventListener("click", async (event) => {
   const remoteCourse = firestoreCourses.find((item) => String(item.id) === selectedSharedCourseId);
   if (remoteCourse) {
     if (remoteCourse.ownerUid !== firestoreUserId || typeof window.bacochuFirestore.deleteCourse !== "function") {
-      sharedCourseDetail.querySelector(".delete-message").textContent = "본인이 작성한 게시물만 삭제할 수 있습니다.";
+      sharedCourseDetail.querySelector(".delete-message").textContent = t("본인이 작성한 게시물만 삭제할 수 있습니다.");
       return;
     }
-    if (!window.confirm("정말 이 코스를 삭제하시겠습니까?")) return;
+    if (!window.confirm(t("정말 이 코스를 삭제하시겠습니까?"))) return;
     try {
       await window.bacochuFirestore.deleteCourse(remoteCourse.id);
       showScreen("course-list-screen");
       showListNotice("코스가 삭제되었습니다");
     } catch (error) {
       console.error("Firestore 코스를 삭제하지 못했습니다.", error);
-      sharedCourseDetail.querySelector(".delete-message").textContent = "코스를 삭제하지 못했습니다. 잠시 후 다시 시도해 주세요.";
+      sharedCourseDetail.querySelector(".delete-message").textContent = t("코스를 삭제하지 못했습니다. 잠시 후 다시 시도해 주세요.");
     }
     return;
   }
@@ -570,14 +575,14 @@ sharedCourseDetail.addEventListener("click", async (event) => {
   const credentials = getCourseManagementCredentials(course || {});
   if (!course || !credentials) return;
 
-  const password = window.prompt("관리 비밀번호를 입력해 주세요.");
+  const password = window.prompt(t("관리 비밀번호를 입력해 주세요."));
   if (password === null) return;
   const passwordHash = await hashPassword(password, credentials.passwordSalt);
   if (passwordHash !== credentials.passwordHash) {
-    sharedCourseDetail.querySelector(".delete-message").textContent = "관리 비밀번호가 일치하지 않습니다";
+    sharedCourseDetail.querySelector(".delete-message").textContent = t("관리 비밀번호가 일치하지 않습니다");
     return;
   }
-  if (!window.confirm("정말 이 코스를 삭제하시겠습니까?")) return;
+  if (!window.confirm(t("정말 이 코스를 삭제하시겠습니까?"))) return;
 
   saveSharedCourses(courses.filter((item) => String(item.id) !== String(course.id)));
   removeCourseLike(course.id);
@@ -609,22 +614,22 @@ sharedCourseDetail.addEventListener("submit", (event) => {
   const content = contentInput.value.trim();
   const message = sharedCourseDetail.querySelector("#comment-message");
   if (!nickname && !content) {
-    message.textContent = "별명과 댓글 내용을 모두 입력해 주세요.";
+    message.textContent = t("별명과 댓글 내용을 모두 입력해 주세요.");
     nicknameInput.focus();
     return;
   }
   if (!nickname) {
-    message.textContent = "별명을 입력해 주세요.";
+    message.textContent = t("별명을 입력해 주세요.");
     nicknameInput.focus();
     return;
   }
   if (!content) {
-    message.textContent = "댓글 내용을 입력해 주세요.";
+    message.textContent = t("댓글 내용을 입력해 주세요.");
     contentInput.focus();
     return;
   }
   if (nickname.length > 20 || content.length > 300) {
-    message.textContent = "별명은 20자, 댓글은 300자 이내로 입력해 주세요.";
+    message.textContent = t("별명은 20자, 댓글은 300자 이내로 입력해 주세요.");
     return;
   }
   const courseId = String(selectedSharedCourseId);
@@ -632,7 +637,7 @@ sharedCourseDetail.addEventListener("submit", (event) => {
   const comments = getLocalCourseComments(store, courseId);
   store.byCourse[courseId] = [...comments, { id: createLocalId("comment"), authorId: getCommentAuthorId(), nickname, content, createdAt: Date.now() }];
   if (!saveCommentStore(store)) {
-    message.textContent = "댓글을 저장하지 못했습니다. 브라우저 저장 공간을 확인해 주세요.";
+    message.textContent = t("댓글을 저장하지 못했습니다. 브라우저 저장 공간을 확인해 주세요.");
     return;
   }
   contentInput.value = "";
@@ -727,7 +732,7 @@ courseForm.addEventListener("submit", async (event) => {
     return;
   }
   if (!firestoreUserId || typeof window.bacochuFirestore.createCourse !== "function") {
-    courseFormMessage.textContent = "익명 로그인 중입니다. 잠시 후 다시 등록해 주세요.";
+    courseFormMessage.textContent = t("익명 로그인 중입니다. 잠시 후 다시 등록해 주세요.");
     return;
   }
   try {
@@ -735,7 +740,7 @@ courseForm.addEventListener("submit", async (event) => {
     await window.bacochuFirestore.createCourse(course);
   } catch (error) {
     console.error("Firestore 코스를 등록하지 못했습니다.", error);
-    courseFormMessage.textContent = "코스를 등록하지 못했습니다. 네트워크 연결을 확인해 주세요.";
+    courseFormMessage.textContent = t("코스를 등록하지 못했습니다. 네트워크 연결을 확인해 주세요.");
     return;
   }
   courseForm.reset();
@@ -757,11 +762,12 @@ function renderEvents() {
   const items = sampleSeaEvents.filter((event) => event.month === month && (selectedEventType === "전체" || event.type === selectedEventType));
   eventList.innerHTML = items.length ? items.map((event) => `
     <button class="event-card" type="button" data-event-id="${event.id}">
-      <span class="event-card__heading"><span class="tag">${event.type}</span><span aria-hidden="true">→</span></span>
+      <span class="event-card__heading"><span class="tag">${t(event.type)}</span><span aria-hidden="true">→</span></span>
       <h2>${event.name}</h2>
       <span class="event-card__meta"><span>📅 ${event.date}</span><span>📍 ${event.place}</span><span>🌊 ${event.sea}</span></span>
       <p class="event-card__description">${event.description}</p>
-    </button>`).join("") : '<p class="event-empty">이달에는 등록된 행사가 없습니다</p>';
+    </button>`).join("") : `<p class="event-empty">${t("이달에는 등록된 행사가 없습니다")}</p>`;
+  window.i18n.apply(eventList);
 }
 
 function openEvents() {
@@ -780,13 +786,14 @@ function openEventDetail(id) {
   const event = sampleSeaEvents.find((item) => item.id === id);
   if (!event) return;
   eventDetail.innerHTML = `
-    <p class="result-intro">SAMPLE SEA EVENT · ${event.type}</p>
+    <span hidden data-current-event="${event.id}"></span><p class="result-intro">SAMPLE SEA EVENT · ${t(event.type)}</p>
     <h1 id="event-detail-title" class="event-detail-title">${event.name}</h1>
     <p class="event-detail-summary">${event.description}</p>
-    <div class="event-detail-grid"><p><strong>날짜</strong> ${event.date}</p><p><strong>장소</strong> ${event.place}</p><p><strong>바다</strong> ${event.sea}</p></div>
-    <section class="detail-section"><h2>👥 추천 대상</h2><p>${event.audience}</p></section>
-    <section class="detail-section"><h2>💡 이용 팁</h2><p>${event.tip}</p></section>
-    <section class="detail-section"><h2>🚌 찾아가는 방법</h2><p>${event.directions}</p></section>`;
+    <div class="event-detail-grid"><p><strong>${t("날짜")}</strong> ${event.date}</p><p><strong>${t("장소")}</strong> ${event.place}</p><p><strong>${t("바다")}</strong> ${event.sea}</p></div>
+    <section class="detail-section"><h2>👥 ${t("추천 대상")}</h2><p>${event.audience}</p></section>
+    <section class="detail-section"><h2>💡 ${t("이용 팁")}</h2><p>${event.tip}</p></section>
+    <section class="detail-section"><h2>🚌 ${t("찾아가는 방법")}</h2><p>${event.directions}</p></section>`;
+  window.i18n.apply(eventDetail);
   showScreen("event-detail-screen");
 }
 
@@ -808,3 +815,12 @@ eventList.addEventListener("click", (event) => {
 });
 document.querySelector("[data-back-events]").addEventListener("click", () => showScreen("event-screen"));
 document.querySelectorAll("[data-event-home]").forEach((button) => button.addEventListener("click", () => showScreen("home-screen")));
+
+window.addEventListener("bacochu:languagechange", () => {
+  renderSharedCourses();
+  if (selectedSharedCourseId && !document.querySelector("#course-detail-screen").hidden) openCourseDetail(selectedSharedCourseId);
+  if (!document.querySelector("#event-screen").hidden) renderEvents();
+  const openEvent = eventDetail.querySelector("[data-current-event]")?.dataset.currentEvent;
+  if (openEvent) openEventDetail(openEvent);
+  setPlaceCount(placeCountSelect.value, { confirmRemoval: false });
+});
