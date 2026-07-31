@@ -321,25 +321,43 @@ h2 {
 .list-heading { display: flex; align-items: start; justify-content: space-between; gap: 12px; }
 .list-heading button { flex: none; padding: 8px 12px; color: var(--white); background: var(--coral); border: 0; border-radius: 12px; cursor: pointer; font-size: .75rem; font-weight: 800; }
 .shared-course-list { display: grid; gap: 13px; }
-.shared-course-card { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; width: 100%; color: var(--navy); background: var(--white); border: 1px solid rgba(20,125,146,.1); border-radius: 19px; box-shadow: 0 7px 18px rgba(6,59,77,.07); overflow: hidden; }
+.course-list-filters { display: grid; grid-template-columns: repeat(2, 1fr); gap: 7px; margin: -7px 0 17px; padding: 4px; background: #eaf6f3; border-radius: 15px; }
+.course-list-filter { min-height: 42px; padding: 9px 12px; color: var(--muted); background: transparent; border: 0; border-radius: 11px; cursor: pointer; font-size: .8rem; font-weight: 800; }
+.course-list-filter.is-active { color: var(--white); background: var(--navy); box-shadow: 0 4px 11px rgba(6,59,77,.16); }
+.course-list-filter:focus-visible { outline: 3px solid var(--coral); outline-offset: 2px; }
+.shared-course-card { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: stretch; width: 100%; color: var(--navy); background: var(--white); border: 1px solid rgba(20,125,146,.1); border-radius: 19px; box-shadow: 0 7px 18px rgba(6,59,77,.07); overflow: hidden; }
 .shared-course-card:hover { box-shadow: 0 11px 24px rgba(6,59,77,.11); }
 .shared-course-card__open { min-width: 0; padding: 18px 8px 18px 18px; color: inherit; text-align: left; background: transparent; border: 0; cursor: pointer; }
 .shared-course-card__open:focus-visible { outline: 3px solid var(--coral); outline-offset: -4px; }
 .shared-course-card__top { display: flex; justify-content: space-between; gap: 10px; margin-bottom: 9px; }
 .shared-course-card__title { display: block; margin-top: 4px; font-size: 1.05rem; font-weight: 800; letter-spacing: -.06em; }
 .shared-course-card__meta { display: block; margin: 7px 0 0; color: var(--muted); font-size: .76rem; overflow-wrap: anywhere; }
+.shared-course-card__actions { display: flex; flex-direction: column; align-items: stretch; justify-content: center; gap: 7px; padding: 10px 10px 10px 0; }
 .like-button { display: inline-flex; min-width: 58px; min-height: 44px; align-items: center; justify-content: center; gap: 5px; margin: 12px 12px 14px 0; padding: 8px 10px; color: var(--muted); background: #f6fbfa; border: 1px solid rgba(20,125,146,.16); border-radius: 14px; cursor: pointer; font-weight: 800; line-height: 1; }
+.shared-course-card__actions .like-button { width: 100%; margin: 0; }
 .like-button__heart { color: var(--blue); font-size: 1.35rem; }
 .like-button__count { min-width: 1ch; font-size: .78rem; }
 .like-button.is-liked { color: #b9363c; background: #fff0ee; border-color: rgba(200,74,56,.28); }
 .like-button.is-liked .like-button__heart { color: #d9474d; }
 .like-button:focus-visible { outline: 3px solid var(--coral); outline-offset: 2px; }
-.detail-like { display: flex; margin: -10px 0 20px; }
-.detail-like .like-button { margin: 0; }
+.favorite-button { display: inline-flex; min-height: 44px; align-items: center; justify-content: center; gap: 5px; padding: 8px 10px; color: var(--blue); background: #effafa; border: 1px solid rgba(20,125,146,.23); border-radius: 14px; cursor: pointer; font-size: .72rem; font-weight: 800; line-height: 1; white-space: nowrap; }
+.favorite-button__icon { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-linejoin: round; stroke-width: 1.8; }
+.favorite-button.is-saved { color: #9f4b25; background: #fff4e8; border-color: rgba(255,118,94,.4); }
+.favorite-button.is-saved .favorite-button__icon { fill: currentColor; }
+.favorite-button:focus-visible { outline: 3px solid var(--coral); outline-offset: 2px; }
+.detail-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: -10px 0 20px; }
+.detail-actions .like-button { margin: 0; }
+.favorite-empty { display: grid; justify-items: center; padding: 39px 18px; color: var(--muted); text-align: center; background: var(--white); border-radius: 19px; }
+.favorite-empty svg { width: 34px; height: 34px; margin-bottom: 13px; fill: none; stroke: var(--aqua); stroke-linejoin: round; stroke-width: 1.6; }
+.favorite-empty strong { color: var(--navy); font-size: .9rem; }
+.favorite-empty p { margin: 8px 0 0; font-size: .75rem; line-height: 1.6; }
 
 @media (max-width: 359px) {
   .shared-course-card__open { padding-left: 14px; }
   .like-button { min-width: 52px; margin-right: 8px; padding-inline: 8px; }
+  .shared-course-card { grid-template-columns: minmax(0, 1fr) 86px; }
+  .shared-course-card__actions { padding-right: 7px; }
+  .favorite-button { padding-inline: 6px; font-size: .68rem; }
 }
 .tag { display: inline-block; padding: 5px 9px; color: var(--blue); background: var(--sky); border-radius: 12px; font-size: .68rem; font-weight: 700; }
 .course-form { display: grid; gap: 21px; }
