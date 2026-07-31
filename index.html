@@ -164,7 +164,23 @@
           <label>코스 제목<input name="title" type="text" maxlength="40" required placeholder="예: 광안리 노을 산책 코스" /></label>
           <label>작성자 이름 또는 별명<input name="author" type="text" maxlength="20" required placeholder="예: 바다사랑" /></label>
           <label>부산의 바다 또는 해수욕장 선택<select name="beach" required><option value="">선택해 주세요</option><option>광안리해수욕장</option><option>해운대해수욕장</option><option>송정해수욕장</option><option>다대포해수욕장</option><option>송도해수욕장</option><option>일광해수욕장</option><option>임랑해수욕장</option><option>영도 바다</option><option>기장 바다</option></select></label>
-          <fieldset><legend>방문 장소 3곳</legend><div class="place-inputs"><input name="place1" required placeholder="첫 번째 장소" aria-label="첫 번째 방문 장소" /><input name="place2" required placeholder="두 번째 장소" aria-label="두 번째 방문 장소" /><input name="place3" required placeholder="세 번째 장소" aria-label="세 번째 방문 장소" /></div></fieldset>
+          <fieldset class="place-fieldset">
+            <legend>방문 장소</legend>
+            <div class="place-count-control">
+              <label for="place-count">코스 장소 개수</label>
+              <div class="place-stepper">
+                <button type="button" data-place-decrease aria-label="장소 개수 줄이기">−</button>
+                <output id="place-count-display" for="place-count" aria-live="polite">총 1개의 장소</output>
+                <button type="button" data-place-increase aria-label="장소 개수 늘리기">+</button>
+              </div>
+              <select id="place-count" name="placeCount" aria-label="코스 장소 개수 선택">
+                <option value="1" selected>1개</option><option value="2">2개</option><option value="3">3개</option>
+                <option value="4">4개</option><option value="5">5개</option><option value="6">6개</option>
+              </select>
+              <small class="input-guide">최소 1개, 최대 6개까지 순서대로 등록할 수 있어요.</small>
+            </div>
+            <div id="place-inputs" class="place-inputs"></div>
+          </fieldset>
           <label>예상 소요 시간<input name="duration" type="text" maxlength="20" required placeholder="예: 약 4시간" /></label>
           <fieldset><legend>누구와 가기 좋은지</legend><div class="radio-row"><label><input type="radio" name="companion" value="혼자" required /><span>혼자</span></label><label><input type="radio" name="companion" value="친구" /><span>친구</span></label><label><input type="radio" name="companion" value="가족" /><span>가족</span></label></div></fieldset>
           <fieldset><legend>코스 분위기</legend><div class="radio-row radio-row--four"><label><input type="radio" name="mood" value="휴식" required /><span>휴식</span></label><label><input type="radio" name="mood" value="관광" /><span>관광</span></label><label><input type="radio" name="mood" value="사진 촬영" /><span>사진 촬영</span></label><label><input type="radio" name="mood" value="체험" /><span>체험</span></label></div></fieldset>
