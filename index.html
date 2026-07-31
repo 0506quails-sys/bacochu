@@ -146,7 +146,11 @@
           <button class="home-button" type="button" data-home aria-label="홈으로 가기">⌂</button>
         </header>
         <div class="list-heading"><p class="form-guide">마음에 드는 코스를 눌러 자세히 보세요.</p><button type="button" data-open-form>+ 새 코스</button></div>
-        <div id="shared-course-list" class="shared-course-list"></div>
+        <div class="course-list-filters" role="group" aria-label="여행 코스 보기 필터">
+          <button class="course-list-filter is-active" type="button" data-course-filter="all" aria-pressed="true" aria-controls="shared-course-list">전체 코스</button>
+          <button class="course-list-filter" type="button" data-course-filter="favorites" aria-pressed="false" aria-controls="shared-course-list">즐겨찾기</button>
+        </div>
+        <div id="shared-course-list" class="shared-course-list" aria-live="polite"></div>
       </section>
 
       <section id="course-form-screen" class="screen inner-screen" aria-labelledby="course-form-title" hidden>

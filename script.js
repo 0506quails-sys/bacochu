@@ -5,6 +5,7 @@ const formMessage = document.querySelector("#form-message");
 const resultContainer = document.querySelector("#course-result");
 const STORAGE_KEY = "bacochu-shared-courses";
 const LIKES_STORAGE_KEY = "bacochu-course-likes";
+const FAVORITES_STORAGE_KEY = "bacochu-course-favorites-v1";
 const COMMENTS_STORAGE_KEY = "bacochu-course-comments-v1";
 const COMMENT_AUTHOR_STORAGE_KEY = "bacochu-comment-author-id";
 const sharedCourseList = document.querySelector("#shared-course-list");
@@ -16,6 +17,7 @@ const eventList = document.querySelector("#event-list");
 const eventDetail = document.querySelector("#event-detail");
 let selectedEventType = "전체";
 let selectedSharedCourseId = null;
+let selectedCourseFilter = "all";
 
 // 외부 API와 연결하지 않은 기능 확인용 가상 행사 데이터입니다. 실제 개최가 확정된 행사가 아닙니다.
 const sampleSeaEvents = [
@@ -101,6 +103,47 @@ function removeCourseLike(courseId) {
   localStorage.setItem(LIKES_STORAGE_KEY, JSON.stringify(likes));
 }
 
+// 즐겨찾기는 로그인 계정이나 Firebase가 아니라 현재 브라우저에만 저장되며 다른 기기와 동기화되지 않습니다.
+function getCourseFavorites() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(FAVORITES_STORAGE_KEY));
+    if (saved?.version === 1 && Array.isArray(saved.courseIds)) {
+      return new Set(saved.courseIds.filter((id) => typeof id === "string" || typeof id === "number").map(String));
+    }
+  } catch (error) {
+    console.warn("저장된 즐겨찾기를 불러오지 못했습니다.", error);
+  }
+  return new Set();
+}
+
+function saveCourseFavorites(favorites) {
+  try {
+    localStorage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify({ version: 1, courseIds: [...favorites] }));
+    return true;
+  } catch (error) {
+    console.warn("즐겨찾기를 저장하지 못했습니다.", error);
+    return false;
+  }
+}
+
+function isCourseFavorite(courseId) {
+  return getCourseFavorites().has(String(courseId));
+}
+
+function toggleCourseFavorite(courseId) {
+  const id = String(courseId);
+  const favorites = getCourseFavorites();
+  if (favorites.has(id)) favorites.delete(id);
+  else favorites.add(id);
+  saveCourseFavorites(favorites);
+}
+
+function removeCourseFavorite(courseId) {
+  const favorites = getCourseFavorites();
+  favorites.delete(String(courseId));
+  saveCourseFavorites(favorites);
+}
+
 // 댓글은 Firebase와 공유하지 않고 이 브라우저의 별도 localStorage 영역에만 저장합니다.
 function getCommentStore() {
   try {
@@ -157,6 +200,12 @@ function likeButtonMarkup(courseId) {
   const { liked, count } = getCourseLike(courseId);
   const action = liked ? "좋아요 취소" : "좋아요";
   return `<button class="like-button${liked ? " is-liked" : ""}" type="button" data-like-course="${escapeHtml(courseId)}" aria-label="${action}, 현재 ${count}개" aria-pressed="${liked}"><span class="like-button__heart" aria-hidden="true">${liked ? "♥" : "♡"}</span><span class="like-button__count" aria-hidden="true">${count}</span></button>`;
+}
+
+function favoriteButtonMarkup(courseId) {
+  const saved = isCourseFavorite(courseId);
+  const label = saved ? "즐겨찾기 해제" : "즐겨찾기 저장";
+  return `<button class="favorite-button${saved ? " is-saved" : ""}" type="button" data-favorite-course="${escapeHtml(courseId)}" aria-label="${label}" aria-pressed="${saved}"><svg class="favorite-button__icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6.75 3.75h10.5v16.5L12 16.5l-5.25 3.75V3.75Z" /></svg><span>${saved ? "저장됨" : "즐겨찾기"}</span></button>`;
 }
 
 function createPasswordSalt() {
@@ -239,14 +288,20 @@ document.querySelector("#restart-button").addEventListener("click", () => {
 });
 
 function renderSharedCourses() {
-  sharedCourseList.innerHTML = getSharedCourses().map((course) => `
+  const favorites = getCourseFavorites();
+  const coursesToShow = getSharedCourses().filter((course) => selectedCourseFilter !== "favorites" || favorites.has(String(course.id)));
+  if (!coursesToShow.length && selectedCourseFilter === "favorites") {
+    sharedCourseList.innerHTML = `<div class="favorite-empty"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.75 3.75h10.5v16.5L12 16.5l-5.25 3.75V3.75Z" /></svg><strong>아직 즐겨찾기한 코스가 없습니다.</strong><p>마음에 드는 코스의 북마크 버튼을 눌러 저장해보세요!</p></div>`;
+    return;
+  }
+  sharedCourseList.innerHTML = coursesToShow.map((course) => `
     <article class="shared-course-card" data-course-card="${escapeHtml(course.id)}">
       <button class="shared-course-card__open" type="button" data-course-id="${escapeHtml(course.id)}" aria-label="${escapeHtml(course.title)} 상세 보기">
         <span class="shared-course-card__top"><span><span class="tag">${escapeHtml(course.beach)}</span><span class="shared-course-card__title">${escapeHtml(course.title)}</span></span><span aria-hidden="true">→</span></span>
         <span class="tag">${escapeHtml(course.mood)}</span> <span class="tag">${escapeHtml(course.companion)}와 함께</span>
         <span class="shared-course-card__meta">✍️ ${escapeHtml(course.author)} · ⏱ ${escapeHtml(course.duration)}</span>
       </button>
-      ${likeButtonMarkup(course.id)}
+      <div class="shared-course-card__actions">${favoriteButtonMarkup(course.id)}${likeButtonMarkup(course.id)}</div>
     </article>`).join("");
 }
 
@@ -258,7 +313,7 @@ function openCourseDetail(id) {
   sharedCourseDetail.innerHTML = `
     <p class="result-intro">TRAVELER'S COURSE</p><h1 id="detail-title" class="course-name">${escapeHtml(course.title)}</h1>
     <p class="detail-meta">✍️ ${escapeHtml(course.author)} · ⏱ ${escapeHtml(course.duration)}</p>
-    <div class="detail-like">${likeButtonMarkup(course.id)}</div>
+    <div class="detail-actions">${favoriteButtonMarkup(course.id)}${likeButtonMarkup(course.id)}</div>
     <div class="detail-tags"><span class="tag">🌊 ${escapeHtml(course.beach)}</span><span class="tag">👥 ${escapeHtml(course.companion)}</span><span class="tag">✨ ${escapeHtml(course.mood)}</span></div>
     <section class="detail-section"><h2>📍 방문 장소 3곳</h2><ol class="detail-places">${course.places.map((place) => `<li>${escapeHtml(place)}</li>`).join("")}</ol></section>
     <section class="detail-section"><h2>💡 코스 소개와 추천 이유</h2><p>${escapeHtml(course.description)}</p></section>
@@ -356,6 +411,13 @@ sharedCourseDetail.addEventListener("click", async (event) => {
     openCourseDetail(likeButton.dataset.likeCourse);
     return;
   }
+  const favoriteButton = event.target.closest("[data-favorite-course]");
+  if (favoriteButton) {
+    toggleCourseFavorite(favoriteButton.dataset.favoriteCourse);
+    renderSharedCourses();
+    openCourseDetail(favoriteButton.dataset.favoriteCourse);
+    return;
+  }
   if (!event.target.closest("[data-delete-course]")) return;
   const courses = getSharedCourses();
   const course = courses.find((item) => String(item.id) === selectedSharedCourseId && isUserCreatedCourse(item));
@@ -373,6 +435,7 @@ sharedCourseDetail.addEventListener("click", async (event) => {
 
   saveSharedCourses(courses.filter((item) => String(item.id) !== String(course.id)));
   removeCourseLike(course.id);
+  removeCourseFavorite(course.id);
   removeCourseComments(course.id);
   renderSharedCourses();
   showScreen("course-list-screen");
@@ -450,8 +513,16 @@ document.querySelector("[data-back-list]").addEventListener("click", () => { ren
 document.querySelector("[data-open-list]").addEventListener("click", () => { renderSharedCourses(); showScreen("course-list-screen"); });
 document.querySelectorAll("[data-open-form]").forEach((button) => button.addEventListener("click", () => { courseFormMessage.textContent = ""; showScreen("course-form-screen"); }));
 sharedCourseList.addEventListener("click", (event) => {
+  const favoriteButton = event.target.closest("[data-favorite-course]");
+  if (favoriteButton) {
+    event.stopPropagation();
+    toggleCourseFavorite(favoriteButton.dataset.favoriteCourse);
+    renderSharedCourses();
+    return;
+  }
   const likeButton = event.target.closest("[data-like-course]");
   if (likeButton) {
+    event.stopPropagation();
     toggleCourseLike(likeButton.dataset.likeCourse);
     renderSharedCourses();
     return;
@@ -462,8 +533,24 @@ sharedCourseList.addEventListener("click", (event) => {
   if (courseId) openCourseDetail(courseId);
 });
 
+document.querySelector(".course-list-filters").addEventListener("click", (event) => {
+  const button = event.target.closest("[data-course-filter]");
+  if (!button) return;
+  selectedCourseFilter = button.dataset.courseFilter;
+  document.querySelectorAll("[data-course-filter]").forEach((item) => {
+    const active = item === button;
+    item.classList.toggle("is-active", active);
+    item.setAttribute("aria-pressed", String(active));
+  });
+  renderSharedCourses();
+});
+
 window.addEventListener("storage", (event) => {
   if (event.key === LIKES_STORAGE_KEY) {
+    renderSharedCourses();
+    if (selectedSharedCourseId && !document.querySelector("#course-detail-screen").hidden) openCourseDetail(selectedSharedCourseId);
+  }
+  if (event.key === FAVORITES_STORAGE_KEY) {
     renderSharedCourses();
     if (selectedSharedCourseId && !document.querySelector("#course-detail-screen").hidden) openCourseDetail(selectedSharedCourseId);
   }
