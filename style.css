@@ -70,6 +70,10 @@ button {
 .choice input:checked + span { color: var(--white); background: var(--navy); border-color: var(--navy); box-shadow: var(--shadow); }
 .choice input:focus-visible + span { outline: 3px solid var(--coral); outline-offset: 2px; }
 .form-message { min-height: 20px; margin: -8px 0 8px; color: #c84a38; text-align: center; font-size: .78rem; }
+.firebase-status { margin: 18px 0 0; color: var(--muted); text-align: center; font-size: .76rem; }
+.firebase-status.is-ready { color: var(--blue); }
+.firebase-status.is-error { color: #c84a38; }
+.recommend-button:disabled, .comment-submit:disabled { cursor: wait; opacity: .58; }
 .recommend-button, .restart-button { width: 100%; padding: 16px 20px; color: var(--white); background: var(--coral); border: 0; border-radius: 17px; cursor: pointer; font-weight: 800; box-shadow: 0 10px 22px rgba(255,118,94,.25); }
 .recommend-button { display: flex; justify-content: space-between; }
 .inner-header--compact { justify-content: flex-start; padding-bottom: 23px; }

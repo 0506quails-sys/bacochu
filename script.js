@@ -1,3 +1,21 @@
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
+import { getAuth, onAuthStateChanged, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
+import { addDoc, collection, collectionGroup, deleteDoc, doc, getDoc, getFirestore, onSnapshot, orderBy, query, serverTimestamp, setDoc } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyD0m5OzLQcfxSp2-h8UZyPyiFXxjbPjDb8",
+  authDomain: "bacochu.firebaseapp.com",
+  projectId: "bacochu",
+  storageBucket: "bacochu.firebasestorage.app",
+  messagingSenderId: "620889271920",
+  appId: "1:620889271920:web:4a2c1fd03a805c83500eb5",
+  measurementId: "G-64EJCV591F"
+};
+
+const firebaseApp = initializeApp(firebaseConfig);
+const auth = getAuth(firebaseApp);
+const db = getFirestore(firebaseApp);
+
 const menuButtons = document.querySelectorAll("[data-menu]");
 const statusMessage = document.querySelector("#status-message");
 const form = document.querySelector("#preference-form");
@@ -21,6 +39,16 @@ const eventDetail = document.querySelector("#event-detail");
 let selectedEventType = "전체";
 let selectedSharedCourseId = null;
 let selectedCourseFilter = "all";
+let currentUser = null;
+let remoteCourses = [];
+let coursesLoading = true;
+let coursesError = "";
+let remoteComments = [];
+let remoteLikes = new Map();
+let commentsLoading = false;
+let commentsError = "";
+let unsubscribeComments = null;
+let unsubscribeLikes = null;
 
 // 외부 API와 연결하지 않은 기능 확인용 가상 행사 데이터입니다. 실제 개최가 확정된 행사가 아닙니다.
 const sampleSeaEvents = [
@@ -44,31 +72,18 @@ const sampleSharedCourses = [
 
 const sampleSharedCourseIds = new Set(sampleSharedCourses.map((course) => String(course.id)));
 
-function getCourseManagementCredentials(course) {
-  // 이전 버전에서 사용했을 수 있는 속성명도 읽되, 새 데이터는 아래의 표준 속성명으로만 저장합니다.
-  const passwordHash = course.passwordHash || course.adminPasswordHash;
-  const passwordSalt = course.passwordSalt || course.adminPasswordSalt;
-  return passwordHash && passwordSalt ? { passwordHash, passwordSalt } : null;
-}
-
-function isUserCreatedCourse(course) {
-  if (!course || sampleSharedCourseIds.has(String(course.id))) return false;
-
-  // 구분값이 없던 기존 코스도 관리 비밀번호 해시가 있다면 사용자가 등록한 코스로 복구합니다.
-  return course.isUserCreated === true || Boolean(getCourseManagementCredentials(course));
-}
-
 function getSharedCourses() {
+  let legacyCourses = [];
   try {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
     // 손상된 항목 하나 때문에 목록 전체가 멈추지 않도록 표시 가능한 객체만 읽습니다.
     // 원본 localStorage는 호환성과 복구 가능성을 위해 여기에서 덮어쓰지 않습니다.
-    if (Array.isArray(saved)) return saved.filter((course) => course && typeof course === "object" && course.id != null);
+    if (Array.isArray(saved)) legacyCourses = saved.filter((course) => course && typeof course === "object" && course.id != null && !sampleSharedCourseIds.has(String(course.id)));
   } catch (error) {
     console.warn("저장된 코스를 불러오지 못했습니다.", error);
   }
-  if (localStorage.getItem(STORAGE_KEY) === null) localStorage.setItem(STORAGE_KEY, JSON.stringify(sampleSharedCourses));
-  return [...sampleSharedCourses];
+  const combined = [...sampleSharedCourses, ...remoteCourses, ...legacyCourses];
+  return combined.filter((course, index) => combined.findIndex((item) => String(item.id) === String(course.id)) === index);
 }
 
 function saveSharedCourses(items) {
@@ -87,19 +102,22 @@ function getCourseLikes() {
 }
 
 function getCourseLike(courseId) {
-  const saved = getCourseLikes()[String(courseId)];
-  const liked = saved?.liked === true;
-  // 한 브라우저에서 한 번만 누를 수 있으므로 손상되거나 이전 형식인 개수도 0 또는 1로 정규화합니다.
-  return { liked, count: liked ? 1 : 0 };
+  const id = String(courseId);
+  const likes = remoteLikes.get(id) || new Set();
+  return { liked: Boolean(currentUser && likes.has(currentUser.uid)), count: likes.size };
 }
 
-function toggleCourseLike(courseId) {
+async function toggleCourseLike(courseId) {
+  if (!currentUser) return showListNotice("온라인 연결 후 좋아요를 사용할 수 있어요.");
   const id = String(courseId);
-  const likes = getCourseLikes();
-  const current = getCourseLike(id);
-  const liked = !current.liked;
-  likes[id] = { liked, count: liked ? 1 : 0 };
-  localStorage.setItem(LIKES_STORAGE_KEY, JSON.stringify(likes));
+  const likeRef = doc(db, "courses", id, "likes", currentUser.uid);
+  try {
+    if ((await getDoc(likeRef)).exists()) await deleteDoc(likeRef);
+    else await setDoc(likeRef, { ownerUid: currentUser.uid, createdAt: serverTimestamp() });
+  } catch (error) {
+    console.error("좋아요 처리 실패", error);
+    showListNotice("좋아요를 처리하지 못했습니다. 네트워크를 확인해 주세요.");
+  }
 }
 
 function removeCourseLike(courseId) {
@@ -211,17 +229,6 @@ function favoriteButtonMarkup(courseId) {
   const saved = isCourseFavorite(courseId);
   const label = saved ? "즐겨찾기 해제" : "즐겨찾기 저장";
   return `<button class="favorite-button${saved ? " is-saved" : ""}" type="button" data-favorite-course="${escapeHtml(courseId)}" aria-label="${label}" aria-pressed="${saved}"><svg class="favorite-button__icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6.75 3.75h10.5v16.5L12 16.5l-5.25 3.75V3.75Z" /></svg><span>${saved ? "저장됨" : "즐겨찾기"}</span></button>`;
-}
-
-function createPasswordSalt() {
-  const bytes = crypto.getRandomValues(new Uint8Array(16));
-  return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
-}
-
-async function hashPassword(password, salt) {
-  const data = new TextEncoder().encode(`${salt}:${password}`);
-  const digest = await crypto.subtle.digest("SHA-256", data);
-  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
 function escapeHtml(value) {
@@ -347,6 +354,14 @@ document.querySelector("#restart-button").addEventListener("click", () => {
 function renderSharedCourses() {
   const favorites = getCourseFavorites();
   const coursesToShow = getSharedCourses().filter((course) => selectedCourseFilter !== "favorites" || favorites.has(String(course.id)));
+  if (coursesLoading && !coursesToShow.length) {
+    sharedCourseList.textContent = "코스를 불러오는 중입니다…";
+    return;
+  }
+  if (coursesError && !coursesToShow.length) {
+    sharedCourseList.textContent = coursesError;
+    return;
+  }
   if (!coursesToShow.length && selectedCourseFilter === "favorites") {
     sharedCourseList.innerHTML = `<div class="favorite-empty"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.75 3.75h10.5v16.5L12 16.5l-5.25 3.75V3.75Z" /></svg><strong>아직 즐겨찾기한 코스가 없습니다.</strong><p>마음에 드는 코스의 북마크 버튼을 눌러 저장해보세요!</p></div>`;
     return;
@@ -366,7 +381,7 @@ function openCourseDetail(id) {
   const course = getSharedCourses().find((item) => String(item.id) === String(id));
   if (!course) return;
   selectedSharedCourseId = String(course.id);
-  const canDeleteCourse = isUserCreatedCourse(course) && Boolean(getCourseManagementCredentials(course));
+  const canDeleteCourse = Boolean(currentUser && course.ownerUid === currentUser.uid);
   const places = normalizePlaces(course);
   sharedCourseDetail.innerHTML = `
     <p class="result-intro">TRAVELER'S COURSE</p><h1 id="detail-title" class="course-name">${escapeHtml(course.title)}</h1>
@@ -377,7 +392,7 @@ function openCourseDetail(id) {
     <section class="detail-section"><h2>💡 코스 소개와 추천 이유</h2><p>${escapeHtml(course.description)}</p></section>
     <section class="comments" aria-labelledby="comments-title">
       <div class="comments__heading"><h2 id="comments-title">댓글</h2><strong id="comment-count"></strong></div>
-      <p class="comments__local-guide">댓글은 현재 이 브라우저에만 저장되며 다른 이용자와 공유되지 않습니다.</p>
+      <p class="comments__local-guide">댓글은 실시간으로 다른 이용자에게도 공유됩니다.</p>
       <form id="comment-form" class="comment-form" novalidate>
         <label for="comment-nickname">별명</label>
         <div class="comment-field"><input id="comment-nickname" name="nickname" type="text" maxlength="20" required autocomplete="nickname" aria-describedby="nickname-count" /><span id="nickname-count" class="character-count">0 / 20</span></div>
@@ -391,6 +406,7 @@ function openCourseDetail(id) {
     </section>
     ${canDeleteCourse ? '<div class="course-management"><button class="delete-course-button" type="button" data-delete-course>코스 삭제</button><p class="delete-message" role="alert" aria-live="assertive"></p></div>' : ""}`;
   renderComments(course.id);
+  subscribeToComments(course.id);
   showScreen("course-detail-screen");
 }
 
@@ -398,10 +414,18 @@ function renderComments(courseId, message = "") {
   const list = sharedCourseDetail.querySelector("#comment-list");
   const count = sharedCourseDetail.querySelector("#comment-count");
   if (!list || !count) return;
-  const validComments = getCourseComments(getCommentStore(), courseId);
-  const authorId = getCommentAuthorId();
+  const validComments = remoteComments;
   count.textContent = `댓글 ${validComments.length}개`;
   list.replaceChildren();
+
+  if (commentsLoading) {
+    list.textContent = "댓글을 불러오는 중입니다…";
+    return;
+  }
+  if (commentsError) {
+    list.textContent = commentsError;
+    return;
+  }
 
   if (!validComments.length) {
     const empty = document.createElement("p");
@@ -416,15 +440,14 @@ function renderComments(courseId, message = "") {
       header.className = "comment-card__header";
       const meta = document.createElement("div");
       const nickname = document.createElement("strong");
-      nickname.textContent = String(comment.nickname || "");
+      nickname.textContent = String(comment.authorName || comment.nickname || "");
       const time = document.createElement("time");
-      const date = new Date(comment.createdAt);
+      const date = comment.createdAt?.toDate ? comment.createdAt.toDate() : new Date(comment.createdAt || Date.now());
       time.dateTime = Number.isNaN(date.getTime()) ? "" : date.toISOString();
       time.textContent = Number.isNaN(date.getTime()) ? "작성 시각 정보 없음" : new Intl.DateTimeFormat("ko-KR", { dateStyle: "medium", timeStyle: "short" }).format(date);
       meta.append(nickname, time);
       header.append(meta);
-      // 이 브라우저 식별값 비교는 삭제 버튼 구분용일 뿐 실제 인증이나 보안 기능이 아닙니다.
-      if (comment.authorId === authorId) {
+      if (currentUser && comment.ownerUid === currentUser.uid) {
         const deleteButton = document.createElement("button");
         deleteButton.type = "button";
         deleteButton.className = "comment-delete";
@@ -444,29 +467,46 @@ function renderComments(courseId, message = "") {
   if (status) status.textContent = message;
 }
 
+function subscribeToComments(courseId) {
+  unsubscribeComments?.();
+  remoteComments = [];
+  commentsLoading = true;
+  commentsError = "";
+  renderComments(courseId);
+  unsubscribeComments = onSnapshot(query(collection(db, "courses", String(courseId), "comments"), orderBy("createdAt", "asc")), (snapshot) => {
+    remoteComments = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
+    commentsLoading = false;
+    renderComments(courseId);
+  }, (error) => {
+    console.error("댓글 구독 실패", error);
+    commentsLoading = false;
+    commentsError = "댓글을 불러오지 못했습니다. 네트워크를 확인해 주세요.";
+    renderComments(courseId);
+  });
+}
+
 sharedCourseDetail.addEventListener("click", async (event) => {
   const commentDeleteButton = event.target.closest("[data-delete-comment]");
   if (commentDeleteButton) {
     if (!window.confirm("이 댓글을 삭제하시겠습니까?")) return;
-    const store = getCommentStore();
     const courseId = String(selectedSharedCourseId);
-    const comments = getCourseComments(store, courseId);
-    const authorId = getCommentAuthorId();
     const commentId = commentDeleteButton.dataset.deleteComment;
-    const target = comments.find((comment) => String(comment.id) === commentId);
-    if (!target || target.authorId !== authorId) {
-      renderComments(courseId, "이 브라우저에서 작성한 댓글만 삭제할 수 있습니다.");
+    const target = remoteComments.find((comment) => String(comment.id) === commentId);
+    if (!currentUser || target?.ownerUid !== currentUser.uid) {
+      renderComments(courseId, "자신이 작성한 댓글만 삭제할 수 있습니다.");
       return;
     }
-    store.byCourse[courseId] = comments.filter((comment) => String(comment.id) !== commentId);
-    renderComments(courseId, saveCommentStore(store) ? "댓글이 삭제되었습니다." : "댓글을 삭제하지 못했습니다. 브라우저 저장 공간을 확인해 주세요.");
+    try {
+      await deleteDoc(doc(db, "courses", courseId, "comments", commentId));
+    } catch (error) {
+      console.error("댓글 삭제 실패", error);
+      renderComments(courseId, "댓글을 삭제하지 못했습니다.");
+    }
     return;
   }
   const likeButton = event.target.closest("[data-like-course]");
   if (likeButton) {
-    toggleCourseLike(likeButton.dataset.likeCourse);
-    renderSharedCourses();
-    openCourseDetail(likeButton.dataset.likeCourse);
+    await toggleCourseLike(likeButton.dataset.likeCourse);
     return;
   }
   const favoriteButton = event.target.closest("[data-favorite-course]");
@@ -478,26 +518,18 @@ sharedCourseDetail.addEventListener("click", async (event) => {
   }
   if (!event.target.closest("[data-delete-course]")) return;
   const courses = getSharedCourses();
-  const course = courses.find((item) => String(item.id) === selectedSharedCourseId && isUserCreatedCourse(item));
-  const credentials = getCourseManagementCredentials(course || {});
-  if (!course || !credentials) return;
-
-  const password = window.prompt("관리 비밀번호를 입력해 주세요.");
-  if (password === null) return;
-  const passwordHash = await hashPassword(password, credentials.passwordSalt);
-  if (passwordHash !== credentials.passwordHash) {
-    sharedCourseDetail.querySelector(".delete-message").textContent = "관리 비밀번호가 일치하지 않습니다";
-    return;
-  }
+  const course = courses.find((item) => String(item.id) === selectedSharedCourseId);
+  if (!course || !currentUser || course.ownerUid !== currentUser.uid) return;
   if (!window.confirm("정말 이 코스를 삭제하시겠습니까?")) return;
-
-  saveSharedCourses(courses.filter((item) => String(item.id) !== String(course.id)));
-  removeCourseLike(course.id);
-  removeCourseFavorite(course.id);
-  removeCourseComments(course.id);
-  renderSharedCourses();
-  showScreen("course-list-screen");
-  showListNotice("코스가 삭제되었습니다");
+  try {
+    await deleteDoc(doc(db, "courses", String(course.id)));
+    removeCourseFavorite(course.id);
+    showScreen("course-list-screen");
+    showListNotice("코스가 삭제되었습니다");
+  } catch (error) {
+    console.error("코스 삭제 실패", error);
+    sharedCourseDetail.querySelector(".delete-message").textContent = "코스를 삭제하지 못했습니다.";
+  }
 });
 
 sharedCourseDetail.addEventListener("input", (event) => {
@@ -512,7 +544,7 @@ sharedCourseDetail.addEventListener("keydown", (event) => {
   }
 });
 
-sharedCourseDetail.addEventListener("submit", (event) => {
+sharedCourseDetail.addEventListener("submit", async (event) => {
   if (!event.target.matches("#comment-form")) return;
   event.preventDefault();
   const nicknameInput = event.target.elements.nickname;
@@ -520,6 +552,10 @@ sharedCourseDetail.addEventListener("submit", (event) => {
   const nickname = nicknameInput.value.trim();
   const content = contentInput.value.trim();
   const message = sharedCourseDetail.querySelector("#comment-message");
+  if (!currentUser) {
+    message.textContent = "온라인 연결 후 댓글을 등록할 수 있어요.";
+    return;
+  }
   if (!nickname && !content) {
     message.textContent = "별명과 댓글 내용을 모두 입력해 주세요.";
     nicknameInput.focus();
@@ -540,16 +576,19 @@ sharedCourseDetail.addEventListener("submit", (event) => {
     return;
   }
   const courseId = String(selectedSharedCourseId);
-  const store = getCommentStore();
-  const comments = getCourseComments(store, courseId);
-  store.byCourse[courseId] = [...comments, { id: createLocalId("comment"), authorId: getCommentAuthorId(), nickname, content, createdAt: Date.now() }];
-  if (!saveCommentStore(store)) {
-    message.textContent = "댓글을 저장하지 못했습니다. 브라우저 저장 공간을 확인해 주세요.";
-    return;
+  const submitButton = event.target.querySelector("button[type=submit]");
+  submitButton.disabled = true;
+  try {
+    await addDoc(collection(db, "courses", courseId, "comments"), { content, authorName: nickname, ownerUid: currentUser.uid, createdAt: serverTimestamp() });
+    contentInput.value = "";
+    sharedCourseDetail.querySelector("#content-count").textContent = "0 / 300";
+    message.textContent = "댓글이 등록되었습니다.";
+  } catch (error) {
+    console.error("댓글 등록 실패", error);
+    message.textContent = "댓글을 등록하지 못했습니다. 네트워크를 확인해 주세요.";
+  } finally {
+    submitButton.disabled = false;
   }
-  contentInput.value = "";
-  sharedCourseDetail.querySelector("#content-count").textContent = "0 / 300";
-  renderComments(courseId, "댓글이 등록되었습니다.");
 });
 
 function showListNotice(message) {
@@ -570,7 +609,7 @@ document.querySelectorAll("[data-back-share]").forEach((button) => button.addEve
 document.querySelector("[data-back-list]").addEventListener("click", () => { renderSharedCourses(); showScreen("course-list-screen"); });
 document.querySelector("[data-open-list]").addEventListener("click", () => { renderSharedCourses(); showScreen("course-list-screen"); });
 document.querySelectorAll("[data-open-form]").forEach((button) => button.addEventListener("click", () => { courseFormMessage.textContent = ""; courseForm.reset(); setPlaceCount(1, { confirmRemoval: false }); showScreen("course-form-screen"); }));
-sharedCourseList.addEventListener("click", (event) => {
+sharedCourseList.addEventListener("click", async (event) => {
   const favoriteButton = event.target.closest("[data-favorite-course]");
   if (favoriteButton) {
     event.stopPropagation();
@@ -581,8 +620,7 @@ sharedCourseList.addEventListener("click", (event) => {
   const likeButton = event.target.closest("[data-like-course]");
   if (likeButton) {
     event.stopPropagation();
-    toggleCourseLike(likeButton.dataset.likeCourse);
-    renderSharedCourses();
+    await toggleCourseLike(likeButton.dataset.likeCourse);
     return;
   }
   const openButton = event.target.closest("[data-course-id]");
@@ -617,6 +655,12 @@ window.addEventListener("storage", (event) => {
 
 courseForm.addEventListener("submit", async (event) => {
   event.preventDefault();
+  const submitButton = courseForm.querySelector('button[type="submit"]');
+  if (submitButton.disabled) return;
+  if (!currentUser) {
+    courseFormMessage.textContent = "온라인 연결 후 코스를 등록할 수 있어요.";
+    return;
+  }
   if (!courseForm.checkValidity()) {
     const invalid = courseForm.querySelector(":invalid");
     const card = invalid?.closest(".place-input-card");
@@ -626,30 +670,34 @@ courseForm.addEventListener("submit", async (event) => {
     return;
   }
   const values = new FormData(courseForm);
-  const password = values.get("adminPassword");
-  const passwordSalt = createPasswordSalt();
   const places = getDraftPlaces().map((place) => ({ name: place.name.trim(), description: place.description.trim(), address: place.address.trim() }));
   const course = {
-    id: `course-${Date.now()}`,
-    isUserCreated: true,
     title: values.get("title").trim(), author: values.get("author").trim(), beach: values.get("beach"),
     places,
     duration: values.get("duration").trim(), companion: values.get("companion"), mood: values.get("mood"), description: values.get("description").trim(),
-    passwordSalt,
-    // localStorage 기반 해시는 원문 저장을 피하기 위한 임시 구조이며 실제 서버 보안을 대신하지 않습니다.
-    passwordHash: await hashPassword(password, passwordSalt)
+    category: values.get("beach"), ownerUid: currentUser.uid, createdAt: serverTimestamp()
   };
   const emptyPlaceIndex = places.findIndex((place) => !place.name || !place.description || !place.address);
   if ([course.title, course.author, course.duration, course.description].some((value) => !value) || emptyPlaceIndex >= 0) {
     courseFormMessage.textContent = emptyPlaceIndex >= 0 ? `${emptyPlaceIndex + 1}번째 장소의 모든 항목을 공백 없이 작성해 주세요.` : "공백만 입력할 수 없어요. 모든 항목을 내용으로 채워 주세요.";
     return;
   }
-  saveSharedCourses([course, ...getSharedCourses()]);
-  courseForm.reset();
-  setPlaceCount(1, { confirmRemoval: false });
-  courseFormMessage.textContent = "";
-  renderSharedCourses();
-  showScreen("course-list-screen");
+  submitButton.disabled = true;
+  submitButton.firstChild.textContent = "저장 중… ";
+  try {
+    const courseRef = doc(collection(db, "courses"));
+    await setDoc(courseRef, { ...course, id: courseRef.id });
+    courseForm.reset();
+    setPlaceCount(1, { confirmRemoval: false });
+    courseFormMessage.textContent = "";
+    showScreen("course-list-screen");
+  } catch (error) {
+    console.error("코스 등록 실패", error);
+    courseFormMessage.textContent = "코스를 저장하지 못했습니다. 네트워크를 확인해 주세요.";
+  } finally {
+    submitButton.disabled = false;
+    submitButton.firstChild.textContent = "코스 등록하기 ";
+  }
 });
 
 placeCountSelect.addEventListener("change", () => setPlaceCount(placeCountSelect.value));
@@ -658,6 +706,57 @@ document.querySelector("[data-place-increase]").addEventListener("click", () => 
 setPlaceCount(1, { confirmRemoval: false });
 
 getSharedCourses();
+
+const firebaseStatus = document.querySelector("#firebase-status");
+
+function setFirebaseStatus(message, state = "") {
+  firebaseStatus.textContent = message;
+  firebaseStatus.className = `firebase-status${state ? ` is-${state}` : ""}`;
+}
+
+onAuthStateChanged(auth, (user) => {
+  currentUser = user;
+  if (user) {
+    setFirebaseStatus("온라인 동기화가 연결되었습니다.", "ready");
+    renderSharedCourses();
+    if (selectedSharedCourseId) renderComments(selectedSharedCourseId);
+  }
+});
+
+signInAnonymously(auth).catch((error) => {
+  console.error("익명 로그인 실패", error);
+  setFirebaseStatus("온라인 연결에 실패했습니다. 기본 코스와 즐겨찾기는 계속 이용할 수 있어요.", "error");
+});
+
+onSnapshot(collection(db, "courses"), (snapshot) => {
+  remoteCourses = snapshot.docs.map((item) => ({ ...item.data(), id: item.id }));
+  coursesLoading = false;
+  coursesError = "";
+  renderSharedCourses();
+}, (error) => {
+  console.error("코스 구독 실패", error);
+  coursesLoading = false;
+  coursesError = "온라인 코스를 불러오지 못했습니다. 기본 코스는 계속 볼 수 있어요.";
+  setFirebaseStatus(coursesError, "error");
+  renderSharedCourses();
+});
+
+unsubscribeLikes = onSnapshot(collectionGroup(db, "likes"), (snapshot) => {
+  const nextLikes = new Map();
+  snapshot.docs.forEach((item) => {
+    const courseId = item.ref.parent.parent?.id;
+    if (!courseId) return;
+    if (!nextLikes.has(courseId)) nextLikes.set(courseId, new Set());
+    nextLikes.get(courseId).add(item.id);
+  });
+  remoteLikes = nextLikes;
+  renderSharedCourses();
+  if (selectedSharedCourseId && !document.querySelector("#course-detail-screen").hidden) {
+    const favoriteButton = sharedCourseDetail.querySelector("[data-favorite-course]");
+    const likeButton = sharedCourseDetail.querySelector("[data-like-course]");
+    if (favoriteButton && likeButton) likeButton.outerHTML = likeButtonMarkup(selectedSharedCourseId);
+  }
+}, (error) => console.error("좋아요 구독 실패", error));
 
 function renderEvents() {
   const month = Number(eventMonth.value);
