@@ -373,7 +373,7 @@ window.addEventListener("popstate", (event) => {
   const targetId = SCREEN_IDS.has(event.state?.bacochuScreen) ? event.state.bacochuScreen : "home-screen";
   if (targetId === "event-screen") prepareEvents({ resetFilters: false });
   showScreen(targetId, { historyMode: "none" });
-  if (targetId === "weather-map-screen") prepareWeatherMap();
+  if (targetId === "weather-screen") prepareWeather();
 });
 showScreen("home-screen", { historyMode: "replace" });
 
@@ -383,8 +383,8 @@ menuButtons.forEach((button) => {
     const target = button.dataset.screenTarget;
     if (target === "event-screen") {
       openEvents();
-    } else if (target === "weather-map-screen") {
-      openWeatherMap();
+    } else if (target === "weather-screen") {
+      openWeather();
     } else if (SCREEN_IDS.has(target)) {
       showScreen(target);
     }
@@ -881,9 +881,6 @@ const WEATHER_SELECTION_KEY = "bacochu-selected-beach-v1";
 const WEATHER_CACHE_KEY = "bacochu-beach-weather-cache-v1";
 const WEATHER_CACHE_MS = 10 * 60 * 1000;
 let selectedBeachId = (() => { try { const id = localStorage.getItem(WEATHER_SELECTION_KEY); return BEACHES.some((b) => b.id === id) ? id : "gwangalli"; } catch (_) { return "gwangalli"; } })();
-let beachMap = null;
-let beachMarkers = new Map();
-let leafletPromise = null;
 const beachSelect = document.querySelector("#beach-select");
 const detailRefresh = document.querySelector("#beach-weather-refresh");
 
@@ -938,9 +935,7 @@ async function loadWeather({ force = false } = {}) {
 function updateBeachUI({ force = false } = {}) {
   const beach = selectedBeach(); try { localStorage.setItem(WEATHER_SELECTION_KEY, beach.id); } catch (_) {}
   beachSelect.value = beach.id; document.querySelector("#beach-weather-name").textContent = t(beach.nameKey);
-  document.querySelector("#osm-large-map").href = `https://www.openstreetmap.org/?mlat=${beach.latitude}&mlon=${beach.longitude}#map=16/${beach.latitude}/${beach.longitude}`;
   document.querySelectorAll("[data-beach-id]").forEach((button) => { const active = button.dataset.beachId === beach.id; button.classList.toggle("is-active", active); button.setAttribute("aria-pressed", String(active)); });
-  if (beachMap) { beachMap.setView([beach.latitude, beach.longitude], 14); beachMarkers.get(beach.id)?.openPopup(); setTimeout(() => beachMap.invalidateSize(), 0); }
   loadWeather({ force });
 }
 function selectBeach(id, options) { if (!BEACHES.some((b) => b.id === id)) return; selectedBeachId = id; updateBeachUI(options); }
@@ -948,32 +943,13 @@ function renderBeachControls() {
   beachSelect.replaceChildren(...BEACHES.map((beach) => { const option = document.createElement("option"); option.value = beach.id; option.textContent = t(beach.nameKey); return option; }));
   const shortcuts = document.querySelector("#beach-shortcuts"); shortcuts.replaceChildren(...BEACHES.map((beach) => { const button = document.createElement("button"); button.type = "button"; button.dataset.beachId = beach.id; button.textContent = t(beach.shortKey); return button; }));
 }
-function loadLeaflet() {
-  if (window.L) return Promise.resolve(window.L); if (leafletPromise) return leafletPromise;
-  leafletPromise = new Promise((resolve, reject) => {
-    const css = document.createElement("link"); css.rel = "stylesheet"; css.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"; css.integrity = "sha256-p4NxAoJBhIINfQ3ynhtADoHfVSJpUmZmZbNW0cA9xYU="; css.crossOrigin = ""; document.head.append(css);
-    const script = document.createElement("script"); script.src = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"; script.integrity = "sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="; script.crossOrigin = ""; script.onload = () => resolve(window.L); script.onerror = reject; document.head.append(script);
-  }); return leafletPromise;
-}
-async function initializeMap() {
-  if (beachMap) { setTimeout(() => beachMap.invalidateSize(), 0); return; }
-  try {
-    const L = await loadLeaflet(); if (document.querySelector("#weather-map-screen").hidden) return;
-    beachMap = L.map("beach-map", { scrollWheelZoom: false }).setView([35.17, 129.13], 11);
-    const tiles = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' }).addTo(beachMap);
-    tiles.once("tileerror", () => { document.querySelector("#map-error").hidden = false; });
-    BEACHES.forEach((beach) => { const marker = L.marker([beach.latitude, beach.longitude]).addTo(beachMap).bindPopup(t(beach.nameKey)); marker.on("click", () => selectBeach(beach.id, { force: true })); beachMarkers.set(beach.id, marker); });
-    setTimeout(() => { beachMap.invalidateSize(); const beach = selectedBeach(); beachMap.setView([beach.latitude, beach.longitude], 14); }, 0);
-  } catch (error) { console.warn("Leaflet 지도를 불러오지 못했습니다.", error); document.querySelector("#beach-map").hidden = true; document.querySelector("#map-error").hidden = false; }
-}
-function prepareWeatherMap() {
+function prepareWeather() {
   renderBeachControls();
   updateBeachUI();
-  initializeMap();
 }
-function openWeatherMap() { showScreen("weather-map-screen"); prepareWeatherMap(); }
+function openWeather() { showScreen("weather-screen"); prepareWeather(); }
 beachSelect.addEventListener("change", () => selectBeach(beachSelect.value));
-document.querySelector("#beach-shortcuts").addEventListener("click", (event) => { const button = event.target.closest("[data-beach-id]"); if (button) selectBeach(button.dataset.beachId, { force: true }); });
+document.querySelector("#beach-shortcuts").addEventListener("click", (event) => { const button = event.target.closest("[data-beach-id]"); if (button) selectBeach(button.dataset.beachId); });
 detailRefresh.addEventListener("click", () => loadWeather({ force: true }));
 document.querySelectorAll("[data-weather-home]").forEach((button) => button.addEventListener("click", () => showScreen("home-screen")));
 renderBeachControls();
@@ -981,7 +957,6 @@ document.querySelector("#beach-weather-name").textContent = t(selectedBeach().na
 window.addEventListener("bacochu:languagechange", () => {
   renderBeachControls(); const cached = readWeatherCache(); document.querySelector("#beach-weather-name").textContent = t(selectedBeach().nameKey); if (cached) displayWeather(cached); else showWeatherError();
   detailRefresh.textContent = `↻ ${t("새로고침")}`;
-  beachMarkers.forEach((marker, id) => marker.setPopupContent(t(BEACHES.find((b) => b.id === id).nameKey)));
   renderSharedCourses(); if (selectedSharedCourseId && !document.querySelector("#course-detail-screen").hidden) openCourseDetail(selectedSharedCourseId);
   if (!document.querySelector("#event-screen").hidden) renderEvents(); const openEvent = eventDetail.querySelector("[data-current-event]")?.dataset.currentEvent; if (openEvent) openEventDetail(openEvent);
   setPlaceCount(placeCountSelect.value, { confirmRemoval: false });
