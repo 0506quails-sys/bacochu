@@ -365,8 +365,10 @@ menuButtons.forEach((button) => {
       showScreen("preference-screen");
     } else if (button.dataset.menu === "여행 코스 공유") {
       showScreen("share-screen");
-    } else {
+    } else if (button.dataset.menu === "월별 이벤트") {
       openEvents();
+    } else if (button.dataset.menu === "바다 날씨·지도") {
+      openWeatherMap();
     }
   });
 });
@@ -825,70 +827,124 @@ document.querySelector("[data-back-events]").addEventListener("click", () => sho
 document.querySelectorAll("[data-event-home]").forEach((button) => button.addEventListener("click", () => showScreen("home-screen")));
 populateEventYears();
 
-const WEATHER_LOCATION = Object.freeze({ nameKey: "광안리 현재 날씨", latitude: 35.1532, longitude: 129.1187 });
-const WEATHER_CACHE_KEY = "bacochu-weather-gwangalli-v1";
+const BEACHES = Object.freeze([
+  { id: "gwangalli", nameKey: "광안리해수욕장", shortKey: "광안리", latitude: 35.153169, longitude: 129.118666 },
+  { id: "haeundae", nameKey: "해운대해수욕장", shortKey: "해운대", latitude: 35.158697, longitude: 129.160384 },
+  { id: "songjeong", nameKey: "송정해수욕장", shortKey: "송정", latitude: 35.178617, longitude: 129.199713 },
+  { id: "songdo", nameKey: "송도해수욕장", shortKey: "송도", latitude: 35.075876, longitude: 129.017917 },
+  { id: "dadaepo", nameKey: "다대포해수욕장", shortKey: "다대포", latitude: 35.046588, longitude: 128.965517 },
+  { id: "ilgwang", nameKey: "일광해수욕장", shortKey: "일광", latitude: 35.259631, longitude: 129.233054 },
+  { id: "imrang", nameKey: "임랑해수욕장", shortKey: "임랑", latitude: 35.318259, longitude: 129.264155 }
+]);
+const WEATHER_SELECTION_KEY = "bacochu-selected-beach-v1";
+const WEATHER_CACHE_KEY = "bacochu-beach-weather-cache-v1";
 const WEATHER_CACHE_MS = 10 * 60 * 1000;
+let selectedBeachId = (() => { try { const id = localStorage.getItem(WEATHER_SELECTION_KEY); return BEACHES.some((b) => b.id === id) ? id : "gwangalli"; } catch (_) { return "gwangalli"; } })();
+let beachMap = null;
+let beachMarkers = new Map();
+let leafletPromise = null;
 const weatherStatus = document.querySelector("#weather-status");
 const weatherDetails = document.querySelector("#weather-details");
 const weatherRefresh = document.querySelector("#weather-refresh");
+const beachSelect = document.querySelector("#beach-select");
+const detailRefresh = document.querySelector("#beach-weather-refresh");
 
-function weatherCodeKey(code) {
-  if (code === 0) return "맑음";
-  if ([1, 2, 3].includes(code)) return "흐림";
-  if ([45, 48].includes(code)) return "안개";
-  if ([51, 53, 55, 56, 57, 61, 63, 65, 66, 67].includes(code)) return "비";
-  if ([71, 73, 75, 77, 85, 86].includes(code)) return "눈";
-  if ([80, 81, 82].includes(code)) return "소나기";
-  if ([95, 96, 99].includes(code)) return "뇌우";
-  return "알 수 없음";
+function selectedBeach() { return BEACHES.find((beach) => beach.id === selectedBeachId) || BEACHES[0]; }
+function weatherCodeInfo(code) {
+  if (code === 0) return ["맑음", "☀️"];
+  if ([1, 2, 3].includes(code)) return ["흐림", "☁️"];
+  if ([45, 48].includes(code)) return ["안개", "🌫️"];
+  if ([51, 53, 55, 56, 57, 61, 63, 65, 66, 67].includes(code)) return ["비", "🌧️"];
+  if ([71, 73, 75, 77, 85, 86].includes(code)) return ["눈", "❄️"];
+  if ([80, 81, 82].includes(code)) return ["소나기", "🌦️"];
+  if ([95, 96, 99].includes(code)) return ["뇌우", "⛈️"];
+  return ["알 수 없음", "🌡️"];
 }
-
-function validWeatherCache(value) {
-  return value && Number.isFinite(value.fetchedAt) && Number.isFinite(value.temperature) && Number.isFinite(value.apparent) && Number.isFinite(value.wind) && Number.isInteger(value.code);
-}
-
-function readWeatherCache() {
-  try { const value = JSON.parse(localStorage.getItem(WEATHER_CACHE_KEY)); return validWeatherCache(value) ? value : null; } catch (_) { return null; }
-}
+function validWeather(value) { return value && Number.isFinite(value.fetchedAt) && Number.isFinite(value.temperature) && Number.isFinite(value.apparent) && Number.isFinite(value.wind) && Number.isInteger(value.code); }
+function readWeatherCache(id = selectedBeachId) { try { const store = JSON.parse(localStorage.getItem(WEATHER_CACHE_KEY)) || {}; return validWeather(store[id]) ? store[id] : null; } catch (_) { return null; } }
+function saveWeatherCache(id, data) { try { const store = JSON.parse(localStorage.getItem(WEATHER_CACHE_KEY)) || {}; store[id] = data; localStorage.setItem(WEATHER_CACHE_KEY, JSON.stringify(store)); } catch (_) {} }
+function weatherTime(timestamp) { return new Intl.DateTimeFormat(currentLocale(), { dateStyle: "short", timeStyle: "short", timeZone: "Asia/Seoul" }).format(timestamp); }
 
 function displayWeather(data) {
-  weatherStatus.textContent = t(weatherCodeKey(data.code));
-  document.querySelector("#weather-temperature").textContent = `${t("기온")} ${data.temperature} °C`;
+  const beach = selectedBeach(); const [condition, icon] = weatherCodeInfo(data.code);
+  document.querySelector("#weather-location").textContent = `${t(beach.shortKey)} ${Math.round(data.temperature)}°`;
+  weatherStatus.textContent = `${icon} ${t(condition)}`;
+  document.querySelector("#weather-temperature").textContent = `${t("현재 기온")} ${data.temperature} °C`;
   document.querySelector("#weather-apparent").textContent = `${t("체감온도")} ${data.apparent} °C`;
   document.querySelector("#weather-wind").textContent = `${t("풍속")} ${data.wind} km/h`;
-  document.querySelector("#weather-updated").textContent = `${t("마지막 갱신")} ${new Intl.DateTimeFormat(currentLocale(), { dateStyle: "short", timeStyle: "short", timeZone: "Asia/Seoul" }).format(data.fetchedAt)}`;
+  document.querySelector("#weather-updated").textContent = `${t("갱신 시각")} ${weatherTime(data.fetchedAt)}`;
   weatherDetails.hidden = false;
+  document.querySelector("#beach-weather-icon").textContent = icon;
+  document.querySelector("#beach-weather-status").textContent = t(condition);
+  document.querySelector("#beach-weather-details").hidden = false;
+  document.querySelector("#beach-temperature").textContent = `${data.temperature} °C`;
+  document.querySelector("#beach-apparent").textContent = `${data.apparent} °C`;
+  document.querySelector("#beach-condition").textContent = t(condition);
+  document.querySelector("#beach-wind").textContent = `${data.wind} km/h`;
+  document.querySelector("#beach-updated").textContent = weatherTime(data.fetchedAt);
 }
-
+function showWeatherError() {
+  const message = t("현재 날씨 정보를 불러올 수 없습니다. 잠시 후 다시 시도해 주세요.");
+  weatherDetails.hidden = true; weatherStatus.textContent = message;
+  document.querySelector("#beach-weather-details").hidden = true; document.querySelector("#beach-weather-status").textContent = message;
+}
 async function loadWeather({ force = false } = {}) {
-  const cached = readWeatherCache();
+  const requestBeach = selectedBeach(); const cached = readWeatherCache(requestBeach.id);
   if (!force && cached && Date.now() - cached.fetchedAt < WEATHER_CACHE_MS) { displayWeather(cached); return; }
-  weatherRefresh.disabled = true; weatherDetails.hidden = true; weatherStatus.textContent = t("날씨 정보를 불러오는 중…");
-  const params = new URLSearchParams({ latitude: String(WEATHER_LOCATION.latitude), longitude: String(WEATHER_LOCATION.longitude), current: "temperature_2m,apparent_temperature,weather_code,wind_speed_10m", timezone: "Asia/Seoul", temperature_unit: "celsius", wind_speed_unit: "kmh" });
+  weatherRefresh.disabled = detailRefresh.disabled = true; weatherDetails.hidden = true;
+  weatherStatus.textContent = document.querySelector("#beach-weather-status").textContent = t("불러오는 중");
+  const params = new URLSearchParams({ latitude: String(requestBeach.latitude), longitude: String(requestBeach.longitude), current: "temperature_2m,apparent_temperature,weather_code,wind_speed_10m", timezone: "Asia/Seoul", temperature_unit: "celsius", wind_speed_unit: "kmh" });
   try {
     const response = await fetch(`https://api.open-meteo.com/v1/forecast?${params}`); if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const body = await response.json(); const current = body.current; const units = body.current_units;
-    if (!current || units?.temperature_2m !== "°C" || units?.apparent_temperature !== "°C" || units?.wind_speed_10m !== "km/h") throw new Error("Unexpected Open-Meteo units");
+    if (!current || units?.temperature_2m !== "°C" || units?.apparent_temperature !== "°C" || units?.wind_speed_10m !== "km/h") throw new Error("Unexpected Open-Meteo response");
     const data = { fetchedAt: Date.now(), temperature: Number(current.temperature_2m), apparent: Number(current.apparent_temperature), wind: Number(current.wind_speed_10m), code: Number(current.weather_code) };
-    if (!validWeatherCache(data)) throw new Error("Invalid Open-Meteo values");
-    try { localStorage.setItem(WEATHER_CACHE_KEY, JSON.stringify(data)); } catch (_) {} displayWeather(data);
-  } catch (error) {
-    console.warn("Open-Meteo 날씨 요청에 실패했습니다.", error);
-    if (cached) displayWeather(cached); else { weatherDetails.hidden = true; weatherStatus.textContent = t("현재 날씨 정보를 불러올 수 없습니다. 잠시 후 다시 시도해 주세요."); }
-  } finally { weatherRefresh.disabled = false; }
+    if (!validWeather(data)) throw new Error("Invalid Open-Meteo values"); saveWeatherCache(requestBeach.id, data);
+    if (selectedBeachId === requestBeach.id) displayWeather(data);
+  } catch (error) { console.warn("Open-Meteo 날씨 요청에 실패했습니다.", error); if (selectedBeachId === requestBeach.id) showWeatherError(); }
+  finally { weatherRefresh.disabled = detailRefresh.disabled = false; }
 }
-
-weatherRefresh.addEventListener("click", () => loadWeather({ force: true }));
-loadWeather();
-
+function updateBeachUI({ force = false } = {}) {
+  const beach = selectedBeach(); try { localStorage.setItem(WEATHER_SELECTION_KEY, beach.id); } catch (_) {}
+  beachSelect.value = beach.id; document.querySelector("#beach-weather-name").textContent = t(beach.nameKey);
+  document.querySelector("#osm-large-map").href = `https://www.openstreetmap.org/?mlat=${beach.latitude}&mlon=${beach.longitude}#map=16/${beach.latitude}/${beach.longitude}`;
+  document.querySelectorAll("[data-beach-id]").forEach((button) => { const active = button.dataset.beachId === beach.id; button.classList.toggle("is-active", active); button.setAttribute("aria-pressed", String(active)); });
+  if (beachMap) { beachMap.setView([beach.latitude, beach.longitude], 14); beachMarkers.get(beach.id)?.openPopup(); setTimeout(() => beachMap.invalidateSize(), 0); }
+  loadWeather({ force });
+}
+function selectBeach(id, options) { if (!BEACHES.some((b) => b.id === id)) return; selectedBeachId = id; updateBeachUI(options); }
+function renderBeachControls() {
+  beachSelect.replaceChildren(...BEACHES.map((beach) => { const option = document.createElement("option"); option.value = beach.id; option.textContent = t(beach.nameKey); return option; }));
+  const shortcuts = document.querySelector("#beach-shortcuts"); shortcuts.replaceChildren(...BEACHES.map((beach) => { const button = document.createElement("button"); button.type = "button"; button.dataset.beachId = beach.id; button.textContent = t(beach.shortKey); return button; }));
+}
+function loadLeaflet() {
+  if (window.L) return Promise.resolve(window.L); if (leafletPromise) return leafletPromise;
+  leafletPromise = new Promise((resolve, reject) => {
+    const css = document.createElement("link"); css.rel = "stylesheet"; css.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"; css.integrity = "sha256-p4NxAoJBhIINfQ3ynhtADoHfVSJpUmZmZbNW0cA9xYU="; css.crossOrigin = ""; document.head.append(css);
+    const script = document.createElement("script"); script.src = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"; script.integrity = "sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="; script.crossOrigin = ""; script.onload = () => resolve(window.L); script.onerror = reject; document.head.append(script);
+  }); return leafletPromise;
+}
+async function initializeMap() {
+  if (beachMap) { setTimeout(() => beachMap.invalidateSize(), 0); return; }
+  try {
+    const L = await loadLeaflet(); if (document.querySelector("#weather-map-screen").hidden) return;
+    beachMap = L.map("beach-map", { scrollWheelZoom: false }).setView([35.17, 129.13], 11);
+    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' }).addTo(beachMap);
+    BEACHES.forEach((beach) => { const marker = L.marker([beach.latitude, beach.longitude]).addTo(beachMap).bindPopup(t(beach.nameKey)); marker.on("click", () => selectBeach(beach.id, { force: true })); beachMarkers.set(beach.id, marker); });
+    setTimeout(() => { beachMap.invalidateSize(); const beach = selectedBeach(); beachMap.setView([beach.latitude, beach.longitude], 14); }, 0);
+  } catch (error) { console.warn("Leaflet 지도를 불러오지 못했습니다.", error); document.querySelector("#beach-map").hidden = true; document.querySelector("#map-error").hidden = false; }
+}
+function openWeatherMap() { showScreen("weather-map-screen"); renderBeachControls(); updateBeachUI(); initializeMap(); }
+beachSelect.addEventListener("change", () => selectBeach(beachSelect.value));
+document.querySelector("#beach-shortcuts").addEventListener("click", (event) => { const button = event.target.closest("[data-beach-id]"); if (button) selectBeach(button.dataset.beachId, { force: true }); });
+weatherRefresh.addEventListener("click", () => loadWeather({ force: true })); detailRefresh.addEventListener("click", () => loadWeather({ force: true }));
+document.querySelectorAll("[data-weather-home]").forEach((button) => button.addEventListener("click", () => showScreen("home-screen")));
+renderBeachControls(); updateBeachUI();
 window.addEventListener("bacochu:languagechange", () => {
-  document.querySelector("#weather-location").textContent = t(WEATHER_LOCATION.nameKey);
-  weatherRefresh.textContent = t("새로고침");
-  const cachedWeather = readWeatherCache(); if (cachedWeather && !weatherRefresh.disabled) displayWeather(cachedWeather);
-  renderSharedCourses();
-  if (selectedSharedCourseId && !document.querySelector("#course-detail-screen").hidden) openCourseDetail(selectedSharedCourseId);
-  if (!document.querySelector("#event-screen").hidden) renderEvents();
-  const openEvent = eventDetail.querySelector("[data-current-event]")?.dataset.currentEvent;
-  if (openEvent) openEventDetail(openEvent);
+  renderBeachControls(); const cached = readWeatherCache(); document.querySelector("#beach-weather-name").textContent = t(selectedBeach().nameKey); if (cached) displayWeather(cached); else showWeatherError();
+  weatherRefresh.textContent = t("새로고침"); detailRefresh.textContent = `↻ ${t("새로고침")}`;
+  beachMarkers.forEach((marker, id) => marker.setPopupContent(t(BEACHES.find((b) => b.id === id).nameKey)));
+  renderSharedCourses(); if (selectedSharedCourseId && !document.querySelector("#course-detail-screen").hidden) openCourseDetail(selectedSharedCourseId);
+  if (!document.querySelector("#event-screen").hidden) renderEvents(); const openEvent = eventDetail.querySelector("[data-current-event]")?.dataset.currentEvent; if (openEvent) openEventDetail(openEvent);
   setPlaceCount(placeCountSelect.value, { confirmRemoval: false });
 });
