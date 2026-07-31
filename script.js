@@ -22,6 +22,13 @@ let selectedEventType = "전체";
 let selectedSharedCourseId = null;
 let selectedCourseFilter = "all";
 
+// Firestore 스냅샷은 localStorage와 별도로 보관합니다. 이전 브라우저 데이터는
+// 마이그레이션하거나 지우지 않고 화면을 그릴 때만 서버 데이터와 합칩니다.
+let firestoreCourses = [];
+let firestoreCommentsByCourse = new Map();
+let firestoreLikeUidsByCourse = new Map();
+let firestoreUserId = null;
+
 // 외부 API와 연결하지 않은 기능 확인용 가상 행사 데이터입니다. 실제 개최가 확정된 행사가 아닙니다.
 const sampleSeaEvents = [
   { id: "sea-jan", month: 1, name: "송정 새해 바다 산책 주간", date: "1월 2일 ~ 1월 8일", place: "송정해수욕장 안내광장", type: "체험", description: "겨울 바다를 천천히 걸으며 해변 생태 이야기를 듣는 가상 프로그램입니다.", sea: "송정해수욕장", audience: "가벼운 산책을 좋아하는 여행자", tip: "바닷바람을 막을 따뜻한 겉옷을 준비해 주세요.", directions: "동해선 송정역에서 도보로 이동하는 설정입니다." },
@@ -58,7 +65,7 @@ function isUserCreatedCourse(course) {
   return course.isUserCreated === true || Boolean(getCourseManagementCredentials(course));
 }
 
-function getSharedCourses() {
+function getLocalSharedCourses() {
   try {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
     // 손상된 항목 하나 때문에 목록 전체가 멈추지 않도록 표시 가능한 객체만 읽습니다.
@@ -71,11 +78,28 @@ function getSharedCourses() {
   return [...sampleSharedCourses];
 }
 
+function mergeItemsById(primaryItems, secondaryItems) {
+  const merged = new Map();
+  secondaryItems.forEach((item) => {
+    if (item && item.id != null) merged.set(String(item.id), item);
+  });
+  // primary의 항목을 나중에 넣어 같은 ID가 두 저장소에 있어도 한 번만 표시합니다.
+  primaryItems.forEach((item) => {
+    if (item && item.id != null) merged.set(String(item.id), item);
+  });
+  return [...merged.values()];
+}
+
+function getSharedCourses() {
+  // 로컬 코스를 우선하여 예전 관리 비밀번호 메타데이터와 삭제 호환성을 유지합니다.
+  return mergeItemsById(getLocalSharedCourses(), firestoreCourses);
+}
+
 function saveSharedCourses(items) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
 }
 
-// Firebase와 연결하기 전까지 좋아요는 이용자 전체가 아닌 이 브라우저에서만 보관되는 임시 데이터입니다.
+// 기존 브라우저 좋아요는 Firestore 연결 뒤에도 원본 localStorage에 그대로 보관합니다.
 function getCourseLikes() {
   try {
     const saved = JSON.parse(localStorage.getItem(LIKES_STORAGE_KEY));
@@ -90,7 +114,12 @@ function getCourseLike(courseId) {
   const saved = getCourseLikes()[String(courseId)];
   const liked = saved?.liked === true;
   // 한 브라우저에서 한 번만 누를 수 있으므로 손상되거나 이전 형식인 개수도 0 또는 1로 정규화합니다.
-  return { liked, count: liked ? 1 : 0 };
+  const remoteUids = firestoreLikeUidsByCourse.get(String(courseId)) || new Set();
+  const remoteLiked = Boolean(firestoreUserId && remoteUids.has(firestoreUserId));
+  // 로그인 사용자의 Firestore 좋아요가 있으면 같은 브라우저의 기존 좋아요를
+  // 별도의 1개로 더하지 않습니다. UID를 모를 때만 로컬 좋아요를 한 번 보탭니다.
+  const localContribution = liked && !remoteLiked ? 1 : 0;
+  return { liked: liked || remoteLiked, count: remoteUids.size + localContribution };
 }
 
 function toggleCourseLike(courseId) {
@@ -149,7 +178,7 @@ function removeCourseFavorite(courseId) {
   saveCourseFavorites(favorites);
 }
 
-// 댓글은 Firebase와 공유하지 않고 이 브라우저의 별도 localStorage 영역에만 저장합니다.
+// 기존 브라우저 댓글은 자동 업로드하지 않고 별도 localStorage 영역에 계속 저장합니다.
 function getCommentStore() {
   try {
     const saved = JSON.parse(localStorage.getItem(COMMENTS_STORAGE_KEY));
@@ -170,10 +199,32 @@ function saveCommentStore(store) {
   }
 }
 
-function getCourseComments(store, courseId) {
-  const comments = store.byCourse[String(courseId)];
+function getLocalCourseComments(store, courseId) {
+  const id = String(courseId);
+  const comments = store.byCourse[id];
   return Array.isArray(comments) ? comments.filter((comment) => comment && typeof comment === "object") : [];
 }
+
+function getCourseComments(store, courseId) {
+  const id = String(courseId);
+  const localComments = getLocalCourseComments(store, id);
+  const remoteComments = firestoreCommentsByCourse.get(id) || [];
+  // localStorage 항목을 우선해 기존 작성자 식별값과 로컬 삭제 기능을 보존합니다.
+  return mergeItemsById(localComments, remoteComments);
+}
+
+function applyFirestoreSnapshot({ courses = [], commentsByCourse = {}, likeUidsByCourse = {}, userId = null } = {}) {
+  firestoreCourses = Array.isArray(courses) ? courses.filter((course) => course && course.id != null) : [];
+  firestoreCommentsByCourse = new Map(Object.entries(commentsByCourse).map(([courseId, comments]) => [String(courseId), Array.isArray(comments) ? comments : []]));
+  firestoreLikeUidsByCourse = new Map(Object.entries(likeUidsByCourse).map(([courseId, uids]) => [String(courseId), new Set(Array.isArray(uids) ? uids.map(String) : [])]));
+  firestoreUserId = userId == null ? null : String(userId);
+  renderSharedCourses();
+  if (selectedSharedCourseId && !document.querySelector("#course-detail-screen").hidden) openCourseDetail(selectedSharedCourseId);
+}
+
+// Firestore 연결 코드는 스냅샷 결과를 이 함수로 전달합니다. 이 경계 덕분에
+// 서버 동기화가 localStorage를 삭제하거나 기존 데이터를 자동 업로드하지 않습니다.
+window.bacochuFirestore = Object.freeze({ applySnapshot: applyFirestoreSnapshot });
 
 function createLocalId(prefix) {
   if (crypto.randomUUID) return `${prefix}-${crypto.randomUUID()}`;
@@ -450,7 +501,7 @@ sharedCourseDetail.addEventListener("click", async (event) => {
     if (!window.confirm("이 댓글을 삭제하시겠습니까?")) return;
     const store = getCommentStore();
     const courseId = String(selectedSharedCourseId);
-    const comments = getCourseComments(store, courseId);
+    const comments = getLocalCourseComments(store, courseId);
     const authorId = getCommentAuthorId();
     const commentId = commentDeleteButton.dataset.deleteComment;
     const target = comments.find((comment) => String(comment.id) === commentId);
@@ -477,7 +528,9 @@ sharedCourseDetail.addEventListener("click", async (event) => {
     return;
   }
   if (!event.target.closest("[data-delete-course]")) return;
-  const courses = getSharedCourses();
+  // 관리 비밀번호는 예전 localStorage 코스에만 적용합니다. Firestore 코스는
+  // 반드시 서버 인증/보안 규칙으로 관리하며 이 경로에서 삭제하지 않습니다.
+  const courses = getLocalSharedCourses();
   const course = courses.find((item) => String(item.id) === selectedSharedCourseId && isUserCreatedCourse(item));
   const credentials = getCourseManagementCredentials(course || {});
   if (!course || !credentials) return;
@@ -541,7 +594,7 @@ sharedCourseDetail.addEventListener("submit", (event) => {
   }
   const courseId = String(selectedSharedCourseId);
   const store = getCommentStore();
-  const comments = getCourseComments(store, courseId);
+  const comments = getLocalCourseComments(store, courseId);
   store.byCourse[courseId] = [...comments, { id: createLocalId("comment"), authorId: getCommentAuthorId(), nickname, content, createdAt: Date.now() }];
   if (!saveCommentStore(store)) {
     message.textContent = "댓글을 저장하지 못했습니다. 브라우저 저장 공간을 확인해 주세요.";
@@ -644,7 +697,7 @@ courseForm.addEventListener("submit", async (event) => {
     courseFormMessage.textContent = emptyPlaceIndex >= 0 ? `${emptyPlaceIndex + 1}번째 장소의 모든 항목을 공백 없이 작성해 주세요.` : "공백만 입력할 수 없어요. 모든 항목을 내용으로 채워 주세요.";
     return;
   }
-  saveSharedCourses([course, ...getSharedCourses()]);
+  saveSharedCourses([course, ...getLocalSharedCourses()]);
   courseForm.reset();
   setPlaceCount(1, { confirmRemoval: false });
   courseFormMessage.textContent = "";
