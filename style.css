@@ -192,7 +192,7 @@ h1 {
 .menu__heading {
   display: flex;
   align-items: flex-end;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 14px;
   margin-bottom: 21px;
 }
@@ -207,23 +207,6 @@ h2 {
   font-size: 1.35rem;
   letter-spacing: -0.06em;
 }
-
-.menu__weather {
-  display: grid;
-  gap: 5px;
-  min-width: 175px;
-  padding: 7px 10px;
-  color: var(--blue);
-  background: var(--white);
-  border-radius: 20px;
-  box-shadow: 0 5px 15px rgba(6, 59, 77, 0.08);
-  font-size: 0.75rem;
-  font-weight: 700;
-}
-.menu__weather strong, .menu__weather span { display: block; }
-.menu__weather #weather-details { display: flex; flex-wrap: wrap; gap: 2px 8px; font-size: .68rem; }
-.menu__weather #weather-details[hidden] { display: none; }
-.menu__weather button { justify-self: end; padding: 3px 7px; color: var(--blue); background: transparent; border: 1px solid currentColor; border-radius: 10px; cursor: pointer; font: inherit; }
 
 .menu__actions {
   display: grid;

@@ -12,6 +12,8 @@
 
 일정을 갱신하려면 공식 자료와 대조한 뒤 `name`, `startDate`, `endDate`, `place`, `description`, `sourceUrl`, `verifiedAt`을 함께 수정합니다. 발표되지 않은 다음 회차의 날짜를 이전 회차에서 추정하거나 복사하면 안 됩니다. 공공데이터포털 OpenAPI는 현재 앱에 연결하지 않았으므로 인증키가 필요하지 않습니다. 향후 인증키가 필요한 API를 GitHub Pages에서 직접 호출하면 브라우저에 전달된 키를 완전히 숨길 수 없으므로, 운영 환경에서는 별도 서버 프록시를 사용하는 편이 안전합니다.
 
+`startDate`와 `endDate`는 `YYYY-MM-DD` 형식으로 저장합니다. 화면에서는 선택한 달의 첫날/마지막 날과 행사 기간이 겹치는지 달력 날짜로 비교하므로, 두 달 이상 이어지는 행사는 해당하는 모든 달에 표시됩니다. 데이터 파일이 누락되거나 날짜 형식이 잘못되면 “행사 없음” 대신 로딩 오류 안내를 표시합니다.
+
 ## 날씨
 
 날씨는 인증키가 필요 없는 Open-Meteo Forecast API를 사용합니다.
@@ -40,3 +42,7 @@
 
 - 지도: Leaflet 1.9.4 + OpenStreetMap 표준 타일. 전용 화면 진입 시에만 라이브러리와 현재 화면에 필요한 타일을 불러오며, 저작자 표시는 지도와 화면 하단에 유지합니다.
 - 날씨: Open-Meteo Forecast API `current` 자료. 각 선택 좌표로 `temperature_2m`, `apparent_temperature`, `weather_code`, `wind_speed_10m`을 별도로 요청합니다.
+
+## GitHub Pages 정적 파일 갱신
+
+`index.html`은 CSS와 JavaScript URL에 배포 버전 쿼리를 붙입니다. 정적 파일을 수정해 배포할 때에는 네 파일의 버전 값을 함께 올려, 이전 HTML과 새 JavaScript(또는 그 반대)가 브라우저 캐시에서 섞이지 않도록 합니다. 스크립트는 `i18n.js` → `festivals.js` → `script.js` → `firebase-client.js` 순서로 한 번씩만 불러옵니다.

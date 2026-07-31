@@ -32,7 +32,12 @@ let firestoreCommentsByCourse = new Map();
 let firestoreLikeUidsByCourse = new Map();
 let firestoreUserId = null;
 
-const officialFestivals = Array.isArray(window.BACOCHU_FESTIVALS) ? window.BACOCHU_FESTIVALS : [];
+const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+const festivalDataIsValid = Array.isArray(window.BACOCHU_FESTIVALS) && window.BACOCHU_FESTIVALS.every((item) =>
+  item && item.id && item.name && item.place && item.sourceUrl && DATE_PATTERN.test(item.startDate) &&
+  DATE_PATTERN.test(item.endDate) && item.startDate <= item.endDate
+);
+const officialFestivals = festivalDataIsValid ? window.BACOCHU_FESTIVALS : null;
 
 const sampleSharedCourses = [
   { id: "sample-1", title: "다대포 노을 따라 걷는 하루", author: "노을수집가", beach: "다대포해수욕장", places: ["아미산전망대", "고우니생태길", "다대포해수욕장"], duration: "약 4시간", companion: "친구", mood: "사진 촬영", description: "낙동강과 바다가 만나는 풍경부터 붉은 노을까지 차례로 만나는 코스예요. 해 질 무렵 다대포에 도착하면 멋진 사진을 남길 수 있어 추천해요." },
@@ -349,26 +354,39 @@ const courses = [
   { name: "기장 바다 미식 드라이브", tags: ["quiet", "solo", "food"], time: "약 4시간 30분", places: [["죽성성당", "바다 곁 이국적인 풍경"], ["대변항", "기장의 신선한 해산물"], ["오랑대공원", "조용히 파도를 보는 쉼터"]], reason: "복잡함을 벗어나 바다 풍경과 기장의 싱싱한 먹거리를 느긋하게 즐길 수 있어요." }
 ];
 
-function showScreen(id) {
+const SCREEN_IDS = new Set([...document.querySelectorAll(".screen")].map((screen) => screen.id));
+
+function showScreen(id, { historyMode = "push" } = {}) {
+  const targetId = SCREEN_IDS.has(id) ? id : "home-screen";
   document.querySelectorAll(".screen").forEach((screen) => {
-    const active = screen.id === id;
+    const active = screen.id === targetId;
     screen.classList.toggle("screen--active", active);
     screen.hidden = !active;
   });
+  const state = { ...(history.state || {}), bacochuScreen: targetId };
+  if (historyMode === "replace") history.replaceState(state, "", location.href);
+  else if (historyMode === "push" && history.state?.bacochuScreen !== targetId) history.pushState(state, "", location.href);
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
+
+window.addEventListener("popstate", (event) => {
+  const targetId = SCREEN_IDS.has(event.state?.bacochuScreen) ? event.state.bacochuScreen : "home-screen";
+  if (targetId === "event-screen") prepareEvents({ resetFilters: false });
+  showScreen(targetId, { historyMode: "none" });
+  if (targetId === "weather-map-screen") prepareWeatherMap();
+});
+showScreen("home-screen", { historyMode: "replace" });
 
 // 버튼을 누르면 어떤 메뉴를 선택했는지 안내합니다.
 menuButtons.forEach((button) => {
   button.addEventListener("click", () => {
-    if (button.dataset.menu === "맞춤 코스 찾기") {
-      showScreen("preference-screen");
-    } else if (button.dataset.menu === "여행 코스 공유") {
-      showScreen("share-screen");
-    } else if (button.dataset.menu === "월별 이벤트") {
+    const target = button.dataset.screenTarget;
+    if (target === "event-screen") {
       openEvents();
-    } else if (button.dataset.menu === "바다 날씨·지도") {
+    } else if (target === "weather-map-screen") {
       openWeatherMap();
+    } else if (SCREEN_IDS.has(target)) {
+      showScreen(target);
     }
   });
 });
@@ -762,15 +780,29 @@ function formatFestivalDate(item) {
   return item.startDate === item.endDate ? start : `${start} ~ ${end}`;
 }
 
+function festivalOverlapsMonth(item, year, month) {
+  const rangeStart = year * 10000 + month * 100 + 1;
+  const rangeEnd = year * 10000 + month * 100 + new Date(Date.UTC(year, month, 0)).getUTCDate();
+  const start = Number(item.startDate.replaceAll("-", ""));
+  const end = Number(item.endDate.replaceAll("-", ""));
+  return start <= rangeEnd && end >= rangeStart;
+}
+
 function renderEvents() {
+  if (!officialFestivals) {
+    eventList.replaceChildren();
+    const error = document.createElement("p");
+    error.className = "event-empty event-error";
+    error.textContent = t("행사 정보를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.");
+    eventList.append(error);
+    return;
+  }
   const year = Number(eventYear.value);
   const month = Number(eventMonth.value);
+  // 날짜를 UTC/로컬 Date로 섞어 비교하지 않고 달력 날짜 정수로 통일합니다.
+  // 따라서 월 앞의 0 유무나 실행 환경의 시간대와 무관하게 기간 겹침을 판정합니다.
   const items = officialFestivals.filter((item) => {
-    const start = new Date(`${item.startDate}T00:00:00+09:00`);
-    const end = new Date(`${item.endDate}T23:59:59+09:00`);
-    const rangeStart = new Date(`${year}-${String(month).padStart(2, "0")}-01T00:00:00+09:00`);
-    const rangeEnd = new Date(year, month, 0, 23, 59, 59);
-    return start <= rangeEnd && end >= rangeStart && (selectedEventType === "전체" || item.type === selectedEventType);
+    return festivalOverlapsMonth(item, year, month) && (selectedEventType === "전체" || item.type === selectedEventType);
   });
   eventList.replaceChildren();
   if (!items.length) {
@@ -790,19 +822,28 @@ function renderEvents() {
 }
 
 function populateEventYears() {
+  if (!officialFestivals) {
+    const current = String(new Date().getFullYear());
+    eventYear.replaceChildren(Object.assign(document.createElement("option"), { value: current, textContent: current }));
+    return;
+  }
   const years = [...new Set(officialFestivals.flatMap((item) => [Number(item.startDate.slice(0, 4)), Number(item.endDate.slice(0, 4))]))].sort((a, b) => b - a);
   const current = new Date().getFullYear(); if (!years.includes(current)) years.unshift(current);
   eventYear.replaceChildren(...years.map((year) => { const option = document.createElement("option"); option.value = String(year); option.textContent = String(year); return option; }));
 }
 
-function openEvents() {
-  const now = new Date(); eventYear.value = String(now.getFullYear()); eventMonth.value = String(now.getMonth() + 1);
-  selectedEventType = "전체";
-  document.querySelectorAll("[data-event-type]").forEach((button) => { const active = button.dataset.eventType === "전체"; button.classList.toggle("is-active", active); button.setAttribute("aria-pressed", String(active)); });
-  renderEvents(); showScreen("event-screen");
+function prepareEvents({ resetFilters = true } = {}) {
+  if (resetFilters) {
+    const now = new Date(); eventYear.value = String(now.getFullYear()); eventMonth.value = String(now.getMonth() + 1);
+    selectedEventType = "전체";
+    document.querySelectorAll("[data-event-type]").forEach((button) => { const active = button.dataset.eventType === "전체"; button.classList.toggle("is-active", active); button.setAttribute("aria-pressed", String(active)); });
+  }
+  renderEvents();
 }
+function openEvents() { prepareEvents(); showScreen("event-screen"); }
 
 function openEventDetail(id) {
+  if (!officialFestivals) return;
   const item = officialFestivals.find((festival) => festival.id === id); if (!item) return;
   eventDetail.replaceChildren();
   const marker = document.createElement("span"); marker.hidden = true; marker.dataset.currentEvent = item.id;
@@ -843,9 +884,6 @@ let selectedBeachId = (() => { try { const id = localStorage.getItem(WEATHER_SEL
 let beachMap = null;
 let beachMarkers = new Map();
 let leafletPromise = null;
-const weatherStatus = document.querySelector("#weather-status");
-const weatherDetails = document.querySelector("#weather-details");
-const weatherRefresh = document.querySelector("#weather-refresh");
 const beachSelect = document.querySelector("#beach-select");
 const detailRefresh = document.querySelector("#beach-weather-refresh");
 
@@ -867,13 +905,6 @@ function weatherTime(timestamp) { return new Intl.DateTimeFormat(currentLocale()
 
 function displayWeather(data) {
   const beach = selectedBeach(); const [condition, icon] = weatherCodeInfo(data.code);
-  document.querySelector("#weather-location").textContent = `${t(beach.shortKey)} ${Math.round(data.temperature)}°`;
-  weatherStatus.textContent = `${icon} ${t(condition)}`;
-  document.querySelector("#weather-temperature").textContent = `${t("현재 기온")} ${data.temperature} °C`;
-  document.querySelector("#weather-apparent").textContent = `${t("체감온도")} ${data.apparent} °C`;
-  document.querySelector("#weather-wind").textContent = `${t("풍속")} ${data.wind} km/h`;
-  document.querySelector("#weather-updated").textContent = `${t("갱신 시각")} ${weatherTime(data.fetchedAt)}`;
-  weatherDetails.hidden = false;
   document.querySelector("#beach-weather-icon").textContent = icon;
   document.querySelector("#beach-weather-status").textContent = t(condition);
   document.querySelector("#beach-weather-details").hidden = false;
@@ -885,14 +916,14 @@ function displayWeather(data) {
 }
 function showWeatherError() {
   const message = t("현재 날씨 정보를 불러올 수 없습니다. 잠시 후 다시 시도해 주세요.");
-  weatherDetails.hidden = true; weatherStatus.textContent = message;
   document.querySelector("#beach-weather-details").hidden = true; document.querySelector("#beach-weather-status").textContent = message;
 }
 async function loadWeather({ force = false } = {}) {
   const requestBeach = selectedBeach(); const cached = readWeatherCache(requestBeach.id);
   if (!force && cached && Date.now() - cached.fetchedAt < WEATHER_CACHE_MS) { displayWeather(cached); return; }
-  weatherRefresh.disabled = detailRefresh.disabled = true; weatherDetails.hidden = true;
-  weatherStatus.textContent = document.querySelector("#beach-weather-status").textContent = t("불러오는 중");
+  detailRefresh.disabled = true;
+  document.querySelector("#beach-weather-details").hidden = true;
+  document.querySelector("#beach-weather-status").textContent = t("불러오는 중");
   const params = new URLSearchParams({ latitude: String(requestBeach.latitude), longitude: String(requestBeach.longitude), current: "temperature_2m,apparent_temperature,weather_code,wind_speed_10m", timezone: "Asia/Seoul", temperature_unit: "celsius", wind_speed_unit: "kmh" });
   try {
     const response = await fetch(`https://api.open-meteo.com/v1/forecast?${params}`); if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -902,7 +933,7 @@ async function loadWeather({ force = false } = {}) {
     if (!validWeather(data)) throw new Error("Invalid Open-Meteo values"); saveWeatherCache(requestBeach.id, data);
     if (selectedBeachId === requestBeach.id) displayWeather(data);
   } catch (error) { console.warn("Open-Meteo 날씨 요청에 실패했습니다.", error); if (selectedBeachId === requestBeach.id) showWeatherError(); }
-  finally { weatherRefresh.disabled = detailRefresh.disabled = false; }
+  finally { detailRefresh.disabled = false; }
 }
 function updateBeachUI({ force = false } = {}) {
   const beach = selectedBeach(); try { localStorage.setItem(WEATHER_SELECTION_KEY, beach.id); } catch (_) {}
@@ -929,20 +960,27 @@ async function initializeMap() {
   try {
     const L = await loadLeaflet(); if (document.querySelector("#weather-map-screen").hidden) return;
     beachMap = L.map("beach-map", { scrollWheelZoom: false }).setView([35.17, 129.13], 11);
-    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' }).addTo(beachMap);
+    const tiles = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' }).addTo(beachMap);
+    tiles.once("tileerror", () => { document.querySelector("#map-error").hidden = false; });
     BEACHES.forEach((beach) => { const marker = L.marker([beach.latitude, beach.longitude]).addTo(beachMap).bindPopup(t(beach.nameKey)); marker.on("click", () => selectBeach(beach.id, { force: true })); beachMarkers.set(beach.id, marker); });
     setTimeout(() => { beachMap.invalidateSize(); const beach = selectedBeach(); beachMap.setView([beach.latitude, beach.longitude], 14); }, 0);
   } catch (error) { console.warn("Leaflet 지도를 불러오지 못했습니다.", error); document.querySelector("#beach-map").hidden = true; document.querySelector("#map-error").hidden = false; }
 }
-function openWeatherMap() { showScreen("weather-map-screen"); renderBeachControls(); updateBeachUI(); initializeMap(); }
+function prepareWeatherMap() {
+  renderBeachControls();
+  updateBeachUI();
+  initializeMap();
+}
+function openWeatherMap() { showScreen("weather-map-screen"); prepareWeatherMap(); }
 beachSelect.addEventListener("change", () => selectBeach(beachSelect.value));
 document.querySelector("#beach-shortcuts").addEventListener("click", (event) => { const button = event.target.closest("[data-beach-id]"); if (button) selectBeach(button.dataset.beachId, { force: true }); });
-weatherRefresh.addEventListener("click", () => loadWeather({ force: true })); detailRefresh.addEventListener("click", () => loadWeather({ force: true }));
+detailRefresh.addEventListener("click", () => loadWeather({ force: true }));
 document.querySelectorAll("[data-weather-home]").forEach((button) => button.addEventListener("click", () => showScreen("home-screen")));
-renderBeachControls(); updateBeachUI();
+renderBeachControls();
+document.querySelector("#beach-weather-name").textContent = t(selectedBeach().nameKey);
 window.addEventListener("bacochu:languagechange", () => {
   renderBeachControls(); const cached = readWeatherCache(); document.querySelector("#beach-weather-name").textContent = t(selectedBeach().nameKey); if (cached) displayWeather(cached); else showWeatherError();
-  weatherRefresh.textContent = t("새로고침"); detailRefresh.textContent = `↻ ${t("새로고침")}`;
+  detailRefresh.textContent = `↻ ${t("새로고침")}`;
   beachMarkers.forEach((marker, id) => marker.setPopupContent(t(BEACHES.find((b) => b.id === id).nameKey)));
   renderSharedCourses(); if (selectedSharedCourseId && !document.querySelector("#course-detail-screen").hidden) openCourseDetail(selectedSharedCourseId);
   if (!document.querySelector("#event-screen").hidden) renderEvents(); const openEvent = eventDetail.querySelector("[data-current-event]")?.dataset.currentEvent; if (openEvent) openEventDetail(openEvent);
