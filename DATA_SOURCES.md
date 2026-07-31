@@ -17,9 +17,26 @@
 날씨는 인증키가 필요 없는 Open-Meteo Forecast API를 사용합니다.
 
 - 엔드포인트: `https://api.open-meteo.com/v1/forecast`
-- 위치: 광안리해수욕장 (`35.1532`, `129.1187`)
+- 위치: 아래 표의 부산 7개 해수욕장별 좌표
 - 요청값: `temperature_2m`, `apparent_temperature`, `weather_code`, `wind_speed_10m`
 - 시간대: `Asia/Seoul`
 - 단위: 섭씨(`°C`), 시속 킬로미터(`km/h`)
 
-좌표는 `script.js`의 `WEATHER_LOCATION`에서 관리합니다. 정상 응답은 10분간 별도의 localStorage 항목에 캐시합니다. 기존 코스, 댓글, 좋아요, 즐겨찾기 저장 항목은 변경하거나 지우지 않습니다.
+좌표는 `script.js`의 `BEACHES`에서 관리합니다. 정상 응답은 장소별로 10분간 별도의 localStorage 항목에 캐시합니다. 기존 코스, 댓글, 좋아요, 즐겨찾기 저장 항목은 변경하거나 지우지 않습니다.
+
+## 부산 7개 해수욕장 좌표 및 지도
+
+해수욕장 좌표는 OpenStreetMap에서 각 해수욕장 객체/표시 위치를 확인한 2026-07-31 기준점이며, 앱의 날씨 요청과 마커가 같은 좌표를 공유합니다.
+
+| 해수욕장 | 위도 | 경도 | OpenStreetMap 확인 링크 |
+|---|---:|---:|---|
+| 광안리해수욕장 | 35.153169 | 129.118666 | https://www.openstreetmap.org/?mlat=35.153169&mlon=129.118666#map=17/35.153169/129.118666 |
+| 해운대해수욕장 | 35.158697 | 129.160384 | https://www.openstreetmap.org/?mlat=35.158697&mlon=129.160384#map=17/35.158697/129.160384 |
+| 송정해수욕장 | 35.178617 | 129.199713 | https://www.openstreetmap.org/?mlat=35.178617&mlon=129.199713#map=17/35.178617/129.199713 |
+| 송도해수욕장 | 35.075876 | 129.017917 | https://www.openstreetmap.org/?mlat=35.075876&mlon=129.017917#map=17/35.075876/129.017917 |
+| 다대포해수욕장 | 35.046588 | 128.965517 | https://www.openstreetmap.org/?mlat=35.046588&mlon=128.965517#map=17/35.046588/128.965517 |
+| 일광해수욕장 | 35.259631 | 129.233054 | https://www.openstreetmap.org/?mlat=35.259631&mlon=129.233054#map=17/35.259631/129.233054 |
+| 임랑해수욕장 | 35.318259 | 129.264155 | https://www.openstreetmap.org/?mlat=35.318259&mlon=129.264155#map=17/35.318259/129.264155 |
+
+- 지도: Leaflet 1.9.4 + OpenStreetMap 표준 타일. 전용 화면 진입 시에만 라이브러리와 현재 화면에 필요한 타일을 불러오며, 저작자 표시는 지도와 화면 하단에 유지합니다.
+- 날씨: Open-Meteo Forecast API `current` 자료. 각 선택 좌표로 `temperature_2m`, `apparent_temperature`, `weather_code`, `wind_speed_10m`을 별도로 요청합니다.
